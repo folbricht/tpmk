@@ -13,6 +13,7 @@ func main() {
 		newNVCommand(),
 		newKeyCommand(),
 		newx509Command(),
+		newSSHCommand(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {

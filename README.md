@@ -5,6 +5,7 @@ This toolkit strives to simplify common tasks around key and certificates involv
 - Generating RSA/SHA256 keys in the TPM and exporting the public key
 - Generating x509 certificates and signing with a (file) CA
 - Writing of arbirary data to NV storage - intended to be used to store certificates
+- Creating SSH certificates for keys in the TPM
 
 A range of features and options are **not** available at this point, but may be implemented in the future. Suggestions and contributions are welcome.
 
@@ -19,7 +20,7 @@ TODO
 
 ## Tool
 
-The tool is provided for convenience and should allow the use of the most common features. Some of the operations offered by its sub-commands, like `x509` can be performed with more feature-rich tools such as `openssl`.
+The tool is provided for convenience and should allow the use of the most common features. Some of the operations offered by its sub-commands, like `x509` can be performed with more feature-rich tools such as `openssl`. The tool is able to operate on a TPM 2.0 simulator (use option `-d sim`).
 
 ### Installation
 
@@ -41,6 +42,10 @@ go get -u github.com/folbricht/tpmk/cmd/tpmk
 - `x509` Offers commands to generate and sign certificates
 
   - `generate` Generate a new certificate for a public key and sign it
+
+- `ssh` Commands to operate on SSH certificates
+
+  - `certificate` Create and sign an SSH certificate
 
 ### Use-cases / Examples
 
@@ -71,3 +76,10 @@ The following does the same, but passes the data through STDIN/STDOUT without st
 ```sh
 tpmk key generate 0x81000000 - | tpmk x509 generate -c ca.crt -k ca.key --out-format=der - -| tpmk nv write 0x1500000 -
 ```
+
+## Links
+
+- TPM2 specification - [https://trustedcomputinggroup.org/resource/tpm-library-specification/](https://trustedcomputinggroup.org/resource/tpm-library-specification/)
+- Go TPM2 library used by tpmk - [https://github.com/google/go-tpm](https://github.com/google/go-tpm)
+- GoDoc for the tpmk library - [https://godoc.org/github.com/folbricht/tpmk](https://godoc.org/github.com/folbricht/tpmk)
+- IBM TPM2.0 Simulator - [https://sourceforge.net/projects/ibmswtpm2/](https://sourceforge.net/projects/ibmswtpm2/)
