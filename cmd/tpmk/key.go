@@ -13,6 +13,7 @@ func newKeyCommand() *cobra.Command {
 	cmd.AddCommand(
 		newKeyGenCommand(),
 		newKeyrmCommand(),
+		newKeyReadCommand(),
 	)
 	return cmd
 }

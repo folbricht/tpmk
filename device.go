@@ -16,13 +16,29 @@ func OpenDevice(device string) (io.ReadWriteCloser, error) {
 	return tpm2.OpenTPM(device)
 }
 
+// Simulator is a wrapper around a simulator connection that ensures startup and shutdown are called on open/close.
+// This is only necessary with simulators. If shutdown isn't called before disconnecting, the lockout counter
+// in the simulator is incremented.
+type Simulator struct {
+	*mssim.Conn
+}
+
+// Close calls Shutdown() on the simulator before disconnecting to ensure the lockout counter doesn't
+// get incremented.
+func (s Simulator) Close() error {
+	if err := tpm2.Shutdown(s, tpm2.StartupClear); err != nil {
+		return err
+	}
+	return s.Conn.Close()
+}
+
 // OpenSim opens a connection to a local TPM2 simulator via TCP and initalizes it by calling Startup.
-func OpenSim() (io.ReadWriteCloser, error) {
+func OpenSim() (Simulator, error) {
 	dev, err := mssim.Open(mssim.Config{CommandAddress: "localhost:2321", PlatformAddress: "localhost:2322"})
 	if err != nil {
-		return nil, err
+		return Simulator{}, err
 	}
 
 	// Initialize the simulator
-	return dev, tpm2.Startup(dev, tpm2.StartupClear)
+	return Simulator{dev}, tpm2.Startup(dev, tpm2.StartupClear)
 }

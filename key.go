@@ -42,3 +42,12 @@ func GenRSAPrimaryKey(dev io.ReadWriteCloser, handle tpmutil.Handle, parentPW, o
 func DeleteKey(dev io.ReadWriteCloser, handle tpmutil.Handle, password string) error {
 	return tpm2.EvictControl(dev, password, tpm2.HandleOwner, handle, handle)
 }
+
+// ReadPublicKey reads the public part of a key stored in the TPM.
+func ReadPublicKey(dev io.ReadWriteCloser, handle tpmutil.Handle) (crypto.PublicKey, error) {
+	pub, _, _, err := tpm2.ReadPublic(dev, handle)
+	if err != nil {
+		return nil, err
+	}
+	return pub.Key()
+}

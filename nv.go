@@ -2,6 +2,7 @@ package tpmk
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/google/go-tpm/tpm2"
@@ -38,7 +39,7 @@ func NVWrite(dev io.ReadWriteCloser, index tpmutil.Handle, b []byte, password st
 		return err
 	}
 
-	// Can only write naxBuffer bytes at a time so need to batch up the writes until everything is written
+	// Can only write maxBuffer bytes at a time so need to batch up the writes until everything is written
 	var offset uint16
 	for len(b) > 0 {
 		length := len(b)
@@ -53,4 +54,40 @@ func NVWrite(dev io.ReadWriteCloser, index tpmutil.Handle, b []byte, password st
 	}
 	return nil
 
+}
+
+// NVRead returns the raw data stored in an NV index.
+func NVRead(dev io.ReadWriteCloser, index tpmutil.Handle, password string) ([]byte, error) {
+	return tpm2.NVReadEx(dev, index, tpm2.HandleOwner, password, 0)
+}
+
+// NVDelete undefines the space used by an NV index, effectively deleting the data in it.
+func NVDelete(dev io.ReadWriteCloser, index tpmutil.Handle, password string) error {
+	return tpm2.NVUndefineSpace(dev, password, tpm2.HandleOwner, index)
+}
+
+// NVList returns a list of handles for defined NV indexes.
+func NVList(dev io.ReadWriteCloser) ([]tpmutil.Handle, error) {
+	var (
+		pos     = uint32(tpm2.NVIndexFirst)
+		handles []tpmutil.Handle
+	)
+	for {
+		cap, more, err := tpm2.GetCapability(dev, tpm2.CapabilityHandles, 1, pos)
+		if err != nil {
+			return nil, err
+		}
+		for _, c := range cap {
+			h, ok := c.(tpmutil.Handle)
+			if !ok {
+				return nil, fmt.Errorf("expected tpmutil.Handle, got %T", c)
+			}
+			handles = append(handles, h)
+		}
+		if !more {
+			break
+		}
+		pos = uint32(cap[len(cap)-1].(tpmutil.Handle)) + 1
+	}
+	return handles, nil
 }

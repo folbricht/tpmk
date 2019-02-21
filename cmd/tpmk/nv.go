@@ -12,6 +12,9 @@ func newNVCommand() *cobra.Command {
 	}
 	cmd.AddCommand(
 		newNVWriteCommand(),
+		newNVReadCommand(),
+		newNVRmCommand(),
+		newNVLsCommand(),
 	)
 	return cmd
 }
