@@ -14,6 +14,7 @@ func newKeyCommand() *cobra.Command {
 		newKeyGenCommand(),
 		newKeyrmCommand(),
 		newKeyReadCommand(),
+		newKeyLsCommand(),
 	)
 	return cmd
 }

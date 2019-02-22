@@ -31,6 +31,7 @@ go get -u github.com/folbricht/tpmk/cmd/tpmk
   - `generate` Generates a new primary key and makes it persistent
   - `read` Reads the public key
   - `rm` Removes a persistent key
+  - `ls` List persistent keys
 
 - `nv` Contains commands to operate on non-volatile indexes in the TMP
 
@@ -46,6 +47,7 @@ go get -u github.com/folbricht/tpmk/cmd/tpmk
 - `ssh` Commands to operate on SSH certificates
 
   - `certificate` Create and sign an SSH certificate
+  - `pub` Convert a PKCS1 key to OpenSSH format
 
 ## Use-cases / Examples
 

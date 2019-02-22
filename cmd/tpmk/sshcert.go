@@ -115,7 +115,7 @@ func runSSHCert(opt sshCertOptions, args []string) error {
 	}
 
 	// Write the certificate to file or STDOUT
-	b := tpmk.MarshalSSHCert(cert)
+	b := tpmk.MarshalSSHPublic(&cert, cert.KeyId)
 	if crtfile == "-" {
 		_, err = os.Stdout.Write(b)
 		return err

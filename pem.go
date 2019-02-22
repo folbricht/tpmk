@@ -57,7 +57,7 @@ func PubKeyToPEM(pub crypto.PublicKey) ([]byte, error) {
 	return pem.EncodeToMemory(&pem.Block{Type: "RSA PUBLIC KEY", Bytes: der}), nil
 }
 
-// PEMToPubKey decodes a public key in PEM format.
+// PEMToPubKey decodes a public key in PCKS1 PEM format.
 func PEMToPubKey(b []byte) (crypto.PublicKey, error) {
 	blk, _ := pem.Decode(b)
 	if blk == nil || blk.Type != "RSA PUBLIC KEY" {

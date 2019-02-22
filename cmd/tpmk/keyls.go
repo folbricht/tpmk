@@ -7,21 +7,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type nvLsOptions struct {
+type keyLsOptions struct {
 	device string
 }
 
-func newNVLsCommand() *cobra.Command {
-	var opt nvLsOptions
+func newKeyLsCommand() *cobra.Command {
+	var opt keyLsOptions
 
 	cmd := &cobra.Command{
 		Use:     "ls",
-		Short:   "List NV indexes",
-		Long:    `List defined NV indexes.`,
-		Example: `  tpmk nv ls`,
+		Short:   "List persistent keys",
+		Long:    `List persistent key handles.`,
+		Example: `  tpmk key ls`,
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runNVLs(opt, args)
+			return runKeyLs(opt, args)
 		},
 		SilenceUsage: true,
 	}
@@ -30,7 +30,7 @@ func newNVLsCommand() *cobra.Command {
 	return cmd
 }
 
-func runNVLs(opt nvLsOptions, args []string) error {
+func runKeyLs(opt keyLsOptions, args []string) error {
 	// Open device or simulator
 	dev, err := tpmk.OpenDevice(opt.device)
 	if err != nil {
@@ -38,15 +38,15 @@ func runNVLs(opt nvLsOptions, args []string) error {
 	}
 	defer dev.Close()
 
-	// Get a list of indexes
-	indexes, err := tpmk.NVList(dev)
+	// Get a list of keys
+	keys, err := tpmk.KeyList(dev)
 	if err != nil {
 		return err
 	}
 
-	// Print the index in hex notation
-	for _, index := range indexes {
-		fmt.Printf("0x%x\n", index)
+	// Print the key handles in hex notation
+	for _, handle := range keys {
+		fmt.Printf("0x%x\n", handle)
 	}
 	return nil
 }

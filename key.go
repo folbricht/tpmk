@@ -51,3 +51,8 @@ func ReadPublicKey(dev io.ReadWriteCloser, handle tpmutil.Handle) (crypto.Public
 	}
 	return pub.Key()
 }
+
+// KeyList returns a list of persistent key handles.
+func KeyList(dev io.ReadWriteCloser) ([]tpmutil.Handle, error) {
+	return GetHandles(dev, tpm2.PersistentFirst)
+}
