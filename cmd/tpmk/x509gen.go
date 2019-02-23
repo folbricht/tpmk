@@ -94,7 +94,6 @@ func runx509Gen(opt x509GenOptions, args []string) error {
 
 	// Build the x509 cert template
 	template := x509.Certificate{
-		// Subject:      pkix.Name{CommonName: "localhost"},
 		NotBefore:    time.Now(),
 		NotAfter:     expiry,
 		KeyUsage:     x509.KeyUsageCertSign | x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,

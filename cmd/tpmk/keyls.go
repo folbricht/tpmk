@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/folbricht/tpmk"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -34,14 +35,14 @@ func runKeyLs(opt keyLsOptions, args []string) error {
 	// Open device or simulator
 	dev, err := tpmk.OpenDevice(opt.device)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "opening device")
 	}
 	defer dev.Close()
 
 	// Get a list of keys
 	keys, err := tpmk.KeyList(dev)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "reading key list")
 	}
 
 	// Print the key handles in hex notation
