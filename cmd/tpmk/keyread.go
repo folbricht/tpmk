@@ -48,7 +48,7 @@ func runKeyRead(opt keyReadOptions, args []string) error {
 	}
 	defer dev.Close()
 
-	pub, err := tpmk.ReadPublicKey(dev, handle)
+	_, pub, err := tpmk.ReadPublicKey(dev, handle)
 	if err != nil {
 		return errors.Wrap(err, "reading public key")
 	}

@@ -1,7 +1,11 @@
 package tpmk
 
 import (
+	"crypto"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -128,4 +132,45 @@ func TestMutualTLS(t *testing.T) {
 	b, err := ioutil.ReadAll(res.Body)
 	require.NoError(t, err)
 	require.Equal(t, "Hello, client\n", string(b))
+}
+
+func TestSign(t *testing.T) {
+	dev, err := simulator.Get()
+	require.NoError(t, err)
+	defer dev.Close()
+
+	const (
+		pw   = ""
+		attr = tpm2.FlagSign | tpm2.FlagUserWithAuth | tpm2.FlagSensitiveDataOrigin
+	)
+
+	// Generate a RSA key as reference
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	// Load the key into the TPM
+	h, err := LoadExternal(dev, 0, key, pw, attr)
+	require.NoError(t, err)
+
+	// Use the key in the TPM for signing
+	priv, err := NewRSAPrivateKey(dev, h, pw)
+	require.NoError(t, err)
+
+	data := []byte("This is a test")
+	digestSHA256 := sha256.Sum256(data)
+	digestSHA1 := sha1.Sum(data)
+
+	// Perform the signing with the RSA key directly
+	signature1, err := key.Sign(nil, digestSHA256[:], crypto.SHA256)
+	require.NoError(t, err)
+
+	// Sign the same data with the loaded key in the TPM
+	signature2, err := priv.Sign(nil, digestSHA256[:], crypto.SHA256)
+	require.NoError(t, err)
+
+	require.Exactly(t, signature1, signature2)
+
+	// Attempt to sign a SHA1 digest. Should fail
+	signature2, err = priv.Sign(nil, digestSHA1[:], crypto.SHA1)
+	require.Error(t, err)
 }

@@ -11,7 +11,7 @@ import (
 )
 
 // LoadKeyPair reads and parses a key and certificate file in PEM format.
-func LoadKeyPair(crtFilePEM, keyFilePEM string) (*x509.Certificate, *rsa.PrivateKey, error) {
+func LoadKeyPair(crtFilePEM, keyFilePEM string) (*x509.Certificate, crypto.PrivateKey, error) {
 	crt, err := LoadX509CertificateFile(crtFilePEM)
 	if err != nil {
 		return nil, nil, err
@@ -35,16 +35,12 @@ func LoadX509CertificateFile(crtFilePEM string) (*x509.Certificate, error) {
 }
 
 // LoadRSAKeyFile reads a private RSA key in PEM format from a file.
-func LoadRSAKeyFile(keyFilePEM string) (*rsa.PrivateKey, error) {
+func LoadRSAKeyFile(keyFilePEM string) (crypto.PrivateKey, error) {
 	keyRaw, err := ioutil.ReadFile(keyFilePEM)
 	if err != nil {
 		return nil, err
 	}
-	keyBlk, _ := pem.Decode(keyRaw)
-	if keyBlk == nil || keyBlk.Type != "RSA PRIVATE KEY" {
-		return nil, errors.New("failed to decode PEM block containing private key")
-	}
-	return x509.ParsePKCS1PrivateKey(keyBlk.Bytes)
+	return PEMToPrivKey(keyRaw)
 }
 
 // PubKeyToPEM encodes a public key in PEM format.
@@ -66,7 +62,16 @@ func PEMToPubKey(b []byte) (crypto.PublicKey, error) {
 	return x509.ParsePKCS1PublicKey(blk.Bytes)
 }
 
-// CertToPEM converts an x509 certificate from DER format to PEM
+// PEMToPrivKey decodes a Private key in PCKS1 PEM format.
+func PEMToPrivKey(b []byte) (crypto.PrivateKey, error) {
+	keyBlk, _ := pem.Decode(b)
+	if keyBlk == nil || keyBlk.Type != "RSA PRIVATE KEY" {
+		return nil, errors.New("failed to decode PEM block containing private key")
+	}
+	return x509.ParsePKCS1PrivateKey(keyBlk.Bytes)
+}
+
+// CertToPEM encodes an x509 certificate from DER format to PEM
 func CertToPEM(der []byte) []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 }

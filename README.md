@@ -1,8 +1,10 @@
 # tmpk - TPM2 key and storage management toolkit
 
+**This project is under active development. Library interfaces and commands are likely to change.**
+
 This toolkit strives to simplify common tasks around key and certificates involving TPM2. It also provides the tools necessary to make use of keys in the module for TLS connections in Go. It does not attempt to provide a feature-rich interface to support all possible use-cases and features. tpmk consists of a Go library and a tool with a simple interface. It currently provides:
 
-- Generating RSA/SHA256 keys in the TPM and exporting the public key
+- Generating RSA/SHA256 primary keys in the TPM and exporting the public key
 - Generating x509 certificates and signing with a (file) CA
 - Writing of arbirary data to NV storage - intended to be used to store certificates
 - Creating SSH certificates for keys in the TPM

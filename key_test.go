@@ -25,7 +25,7 @@ func TestPrimaryKeyGenerate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, pub1)
 
-	pub2, err := ReadPublicKey(dev, handle)
+	_, pub2, err := ReadPublicKey(dev, handle)
 	require.NoError(t, err)
 
 	require.Exactly(t, pub1, pub2)
@@ -56,3 +56,21 @@ func TestKeyDelete(t *testing.T) {
 	require.NoError(t, err)
 	require.NotContains(t, handles, handle)
 }
+
+// func TestRSAKeyImport(t *testing.T) {
+// 	dev, err := simulator.Get()
+// 	require.NoError(t, err)
+// 	defer dev.Close()
+
+// 	const (
+// 		handle tpmutil.Handle = 0x81000000
+// 		pw                    = ""
+// 		attr                  = tpm2.FlagSign | tpm2.FlagUserWithAuth | tpm2.FlagSensitiveDataOrigin
+// 	)
+
+// 	key, err := rsa.GenerateKey(rand.Reader, 2048)
+// 	require.NoError(t, err)
+
+// 	err = ImportKey(dev, handle, key, pw, attr)
+// 	require.NoError(t, err)
+// }
