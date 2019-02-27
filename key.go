@@ -23,8 +23,8 @@ func GenRSAPrimaryKey(dev io.ReadWriteCloser, handle tpmutil.Handle, parentPW, o
 		Attributes: attr,
 		RSAParameters: &tpm2.RSAParams{
 			Sign: &tpm2.SigScheme{
-				Alg:  tpm2.AlgRSASSA,
-				Hash: tpm2.AlgSHA256,
+				Alg:  tpm2.AlgNull,
+				Hash: tpm2.AlgNull,
 			},
 			KeyBits: uint16(2048),
 			Modulus: big.NewInt(0),

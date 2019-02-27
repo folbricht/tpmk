@@ -154,6 +154,93 @@ defer conn.Close()
 conn.Write([]byte("hello"))
 ```
 
+### SSH certificate generation
+
+This example shows how to create an SSH certificate for a key in the TPM. It also covers reading and converting a key to OpenSSH format. The key is assumed to be present in the TPM already. An earlier example shows how to generate one.
+
+First, the public key is read from the TPM. The result is PEM encoded PKCS#1.
+
+```sh
+tpmk key read 0x81000000 pub.pem
+```
+
+To generate and sign an SSH certificate, an SSH CA key is required which is provided as file (ssh-ca) in this example. A key identifier, serial or certificate option can be provided.
+
+```sh
+tpmk ssh certificate --ca-key ssh-ca --id myKey -O force-command=ls pub.pem tpm-cert.pub
+```
+
+If a public key conversion to OpenSSH format is needed, the `pub` subcommand can be used.
+
+```sh
+tpmk ssh pub pub.pem id_rsa.pub
+```
+
+As before, these commands can be chained together via STDOUT/STDIN by providing `-` in place of filenames.
+
+### Open SSH connection using public key authentication with TPM key
+
+The following example shows how to utilize a TPM key to open an SSH connection to a server using [golang.org/x/crypto/ssh](https://godoc.org/golang.org/x/crypto/ssh) as client.
+
+First open the TPM device or simulator. The key 0x81000000 is assumed to be present and will be used for authentication.
+
+```go
+const (
+  keyHandle = 0x81000000
+  password  = ""
+)
+
+dev, err := tpmk.OpenDevice("/dev/tpmrm0")
+if err!=nil{
+    panic(err)
+}
+defer dev.Close()
+```
+
+Read the public key from the TPM and use it to create crypto.Signer which can be used to build an ssh.Signer used in public key authentication.
+
+``` go
+// Use the private key in the TPM
+private, err := tpmk.NewRSAPrivateKey(dev, keyHandle, password)
+if err != nil {
+  panic(err)
+}
+// Create an ssh.Signer to be used for key authentication
+signer, err := ssh.NewSignerFromSigner(private)
+if err != nil {
+  panic(err)
+}
+// Build the client configuration
+config := &ssh.ClientConfig{
+  User: "username",
+  Auth: []ssh.AuthMethod{
+    ssh.PublicKeys(signer),
+  },
+  HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+}
+```
+
+Open the SSH client connection. The public key in OpenSSH format needs to be setup on the server for authentication to succeed.
+
+```go
+client, err := ssh.Dial("tcp", "hostname:22", config)
+if err != nil {
+  panic(err)
+}
+
+session, err := client.NewSession()
+if err != nil {
+  panic(err)
+}
+defer session.Close()
+
+b, err := session.Output("/usr/bin/whoami")
+if err != nil {
+  panic(err)
+}
+fmt.Println(string(b))
+```
+
 ## Links
 
 - TPM2 specification - [https://trustedcomputinggroup.org/resource/tpm-library-specification/](https://trustedcomputinggroup.org/resource/tpm-library-specification/)

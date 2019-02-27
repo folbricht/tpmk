@@ -36,19 +36,48 @@ func (k RSAPrivateKey) Public() crypto.PublicKey {
 	return k.publicKey
 }
 
-var tpmToHashFunc = map[tpm2.Algorithm]crypto.Hash{
-	tpm2.AlgSHA1:   crypto.SHA1,
-	tpm2.AlgSHA384: crypto.SHA384,
-	tpm2.AlgSHA256: crypto.SHA256,
-	tpm2.AlgSHA512: crypto.SHA512,
+// Map a crypto.Hash algorithm to a tpm2 constant
+var tpmToHashFunc = map[crypto.Hash]tpm2.Algorithm{
+	crypto.SHA1:   tpm2.AlgSHA1,
+	crypto.SHA384: tpm2.AlgSHA384,
+	crypto.SHA256: tpm2.AlgSHA256,
+	crypto.SHA512: tpm2.AlgSHA512,
+}
+
+// Map the crypto.Hash values to strings. Used to report errors
+// when a Hash algorithm isn't available.
+var hashToName = map[crypto.Hash]string{
+	crypto.MD4:         "MD4",
+	crypto.MD5:         "MD5",
+	crypto.SHA1:        "SHA1",
+	crypto.SHA224:      "SHA224",
+	crypto.SHA256:      "SHA256",
+	crypto.SHA384:      "SHA384",
+	crypto.SHA512:      "SHA512",
+	crypto.MD5SHA1:     "MD5SHA1",
+	crypto.RIPEMD160:   "RIPEMD160",
+	crypto.SHA3_224:    "SHA3_224",
+	crypto.SHA3_256:    "SHA3_256",
+	crypto.SHA3_384:    "SHA3_384",
+	crypto.SHA3_512:    "SHA3_512",
+	crypto.SHA512_224:  "SHA512_224",
+	crypto.SHA512_256:  "SHA512_256",
+	crypto.BLAKE2s_256: "BLAKE2s_256",
+	crypto.BLAKE2b_256: "BLAKE2b_256",
+	crypto.BLAKE2b_384: "BLAKE2b_384",
+	crypto.BLAKE2b_512: "BLAKE2b_512",
 }
 
 // Sign data via a key in the TPM. Implements crypto.Signer.
 func (k RSAPrivateKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
-	if opts.HashFunc() != tpmToHashFunc[k.pub.NameAlg] {
-		return nil, fmt.Errorf("unsupported hash algorithm: %d", opts.HashFunc())
+	sigAlg, ok := tpmToHashFunc[opts.HashFunc()]
+	if !ok {
+		return nil, fmt.Errorf("unsupported hash algorithm: %d (%s)", opts.HashFunc(), hashToName[opts.HashFunc()])
 	}
-	scheme := k.pub.RSAParameters.Sign
+	scheme := &tpm2.SigScheme{
+		Alg:  tpm2.AlgRSASSA,
+		Hash: sigAlg,
+	}
 	sig, err := tpm2.Sign(k.dev, k.handle, k.password, digest, scheme)
 	if err != nil {
 		return nil, err

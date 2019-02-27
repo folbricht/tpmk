@@ -18,7 +18,7 @@ func TestPrimaryKeyGenerate(t *testing.T) {
 	const (
 		handle = 0x81000000
 		pw     = ""
-		attr   = tpm2.FlagSignerDefault
+		attr   = tpm2.FlagSign | tpm2.FlagFixedTPM | tpm2.FlagUserWithAuth | tpm2.FlagFixedParent | tpm2.FlagSensitiveDataOrigin
 	)
 
 	pub1, err := GenRSAPrimaryKey(dev, handle, pw, pw, attr)
@@ -39,7 +39,7 @@ func TestKeyDelete(t *testing.T) {
 	const (
 		handle tpmutil.Handle = 0x81000000
 		pw                    = ""
-		attr                  = tpm2.FlagSignerDefault
+		attr                  = tpm2.FlagSign | tpm2.FlagFixedTPM | tpm2.FlagUserWithAuth | tpm2.FlagFixedParent | tpm2.FlagSensitiveDataOrigin
 	)
 
 	_, err = GenRSAPrimaryKey(dev, handle, pw, pw, attr)
