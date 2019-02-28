@@ -58,8 +58,8 @@ func LoadExternal(dev io.ReadWriteCloser, handle tpmutil.Handle, pk crypto.Priva
 			Attributes: attr,
 			RSAParameters: &tpm2.RSAParams{
 				Sign: &tpm2.SigScheme{
-					Alg:  tpm2.AlgRSASSA,
-					Hash: tpm2.AlgSHA256,
+					Alg:  tpm2.AlgNull,
+					Hash: tpm2.AlgNull,
 				},
 				KeyBits:  uint16(private.Size() * 8),
 				Exponent: uint32(private.PublicKey.E),

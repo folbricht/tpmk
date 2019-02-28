@@ -140,37 +140,46 @@ func TestSign(t *testing.T) {
 	defer dev.Close()
 
 	const (
-		pw   = ""
-		attr = tpm2.FlagSign | tpm2.FlagUserWithAuth | tpm2.FlagSensitiveDataOrigin
+		handle = 0x81000000
+		pw     = ""
+		attr   = tpm2.FlagSign | tpm2.FlagUserWithAuth | tpm2.FlagSensitiveDataOrigin
 	)
 
-	// Generate a RSA key as reference
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	// Load the key into the TPM
-	h, err := LoadExternal(dev, 0, key, pw, attr)
+	pub, err := GenRSAPrimaryKey(dev, handle, pw, pw, attr)
 	require.NoError(t, err)
 
 	// Use the key in the TPM for signing
-	priv, err := NewRSAPrivateKey(dev, h, pw)
+	priv, err := NewRSAPrivateKey(dev, handle, pw)
 	require.NoError(t, err)
 
 	data := []byte("This is a test")
 	digestSHA256 := sha256.Sum256(data)
 	digestSHA1 := sha1.Sum(data)
 
-	// Perform the signing with the RSA key directly
-	signature1, err := key.Sign(nil, digestSHA256[:], crypto.SHA256)
-	require.NoError(t, err)
+	tests := map[string]struct {
+		digest []byte
+		opts   crypto.SignerOpts
+	}{
+		"RSA-PKCS#1 v1.5 with SHA1":   {digestSHA1[:], crypto.SHA1},
+		"RSA-PKCS#1 v1.5 with SHA256": {digestSHA256[:], crypto.SHA256},
+		"RSA-PSS with SHA1":           {digestSHA1[:], &rsa.PSSOptions{SaltLength: 0, Hash: crypto.SHA1}},
+		"RSA-PSS with SHA256":         {digestSHA256[:], &rsa.PSSOptions{SaltLength: 0, Hash: crypto.SHA256}},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Sign the data with the loaded key in the TPM
+			signature, err := priv.Sign(nil, test.digest, test.opts)
+			require.NoError(t, err)
 
-	// Sign the same data with the loaded key in the TPM
-	signature2, err := priv.Sign(nil, digestSHA256[:], crypto.SHA256)
-	require.NoError(t, err)
-
-	require.Exactly(t, signature1, signature2)
-
-	// Attempt to sign a SHA1 digest. Should fail
-	signature2, err = priv.Sign(nil, digestSHA1[:], crypto.SHA1)
-	require.Error(t, err)
+			// Verify the signature, depending on algorithm
+			switch opts := test.opts.(type) {
+			case crypto.Hash:
+				err = rsa.VerifyPKCS1v15(pub.(*rsa.PublicKey), opts, test.digest, signature)
+				require.NoError(t, err)
+			case *rsa.PSSOptions:
+				err = rsa.VerifyPSS(pub.(*rsa.PublicKey), opts.Hash, test.digest, signature, opts)
+				require.NoError(t, err)
+			}
+		})
+	}
 }

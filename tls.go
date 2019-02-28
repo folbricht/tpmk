@@ -2,6 +2,7 @@ package tpmk
 
 import (
 	"crypto"
+	"crypto/rsa"
 	"fmt"
 	"io"
 
@@ -68,15 +69,20 @@ var hashToName = map[crypto.Hash]string{
 	crypto.BLAKE2b_512: "BLAKE2b_512",
 }
 
-// Sign data via a key in the TPM. Implements crypto.Signer.
+// Sign digests via a key in the TPM. Implements crypto.Signer. If opts are *rsa.PSSOptions,
+// the PSS signature algorithm is used, PKCS#1 1.5 otherwise.
 func (k RSAPrivateKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
-	sigAlg, ok := tpmToHashFunc[opts.HashFunc()]
+	hash, ok := tpmToHashFunc[opts.HashFunc()]
 	if !ok {
 		return nil, fmt.Errorf("unsupported hash algorithm: %d (%s)", opts.HashFunc(), hashToName[opts.HashFunc()])
 	}
+	alg := tpm2.AlgRSASSA
+	if _, ok := opts.(*rsa.PSSOptions); ok {
+		alg = tpm2.AlgRSAPSS
+	}
 	scheme := &tpm2.SigScheme{
-		Alg:  tpm2.AlgRSASSA,
-		Hash: sigAlg,
+		Alg:  alg,
+		Hash: hash,
 	}
 	sig, err := tpm2.Sign(k.dev, k.handle, k.password, digest, scheme)
 	if err != nil {
