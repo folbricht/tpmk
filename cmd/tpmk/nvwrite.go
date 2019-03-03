@@ -5,13 +5,14 @@ import (
 	"os"
 
 	"github.com/folbricht/tpmk"
-	"github.com/google/go-tpm/tpm2"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
 type nvwriteOptions struct {
 	device   string
 	password string
+	attr     string
 }
 
 func newNVWriteCommand() *cobra.Command {
@@ -20,7 +21,32 @@ func newNVWriteCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "write <index> <file>",
 		Short: "Write raw data into an NV index",
-		Long: `Write data into an NV index.
+		Long: `Create a new NV index and write data into it.
+
+NV Index attributes determine how the data can be written or
+accessed. See the TPM 2.0 spec, Part 2, section 13.4 for details.
+Available attributes:
+  ppwrite     
+  ownerwrite
+  authwrite
+  policywrite
+  policydelete
+  writelocked
+  writeall
+  writedefine
+  writestclear
+  globallock
+  ppread
+  ownerread
+  authread
+  policyread
+  noda
+  orderly
+  clearstclear
+  readlocked
+  written
+  platformcreate
+  readstclear
 
 Use '-' to read the data from STDIN.`,
 		Example: `  tpmk nv write 0x1500000 cert.der`,
@@ -33,6 +59,7 @@ Use '-' to read the data from STDIN.`,
 	flags := cmd.Flags()
 	flags.StringVarP(&opt.device, "device", "d", "/dev/tpmrm0", "TPM device, 'sim' for simulator")
 	flags.StringVarP(&opt.password, "password", "p", "", "Password")
+	flags.StringVarP(&opt.attr, "attributes", "a", "ownerwrite|ownerread|authread|ppread", "NV index attributes")
 	return cmd
 }
 
@@ -43,6 +70,10 @@ func runNVWrite(opt nvwriteOptions, args []string) error {
 		return err
 	}
 	input := args[1]
+	attr, err := parseNVAttributes(opt.attr)
+	if err != nil {
+		return errors.Wrap(err, "NV index attributes")
+	}
 
 	// Read the input, from file or stdin
 	var b []byte
@@ -66,6 +97,5 @@ func runNVWrite(opt nvwriteOptions, args []string) error {
 	defer dev.Close()
 
 	// Write to the index
-	attr := tpm2.AttrOwnerWrite | tpm2.AttrOwnerRead | tpm2.AttrAuthRead | tpm2.AttrPPRead
 	return tpmk.NVWrite(dev, index, b, opt.password, attr)
 }

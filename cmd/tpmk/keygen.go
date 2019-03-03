@@ -5,13 +5,14 @@ import (
 	"os"
 
 	"github.com/folbricht/tpmk"
-	"github.com/google/go-tpm/tpm2"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
 type keygenOptions struct {
 	device   string
 	password string
+	attr     string
 }
 
 func newKeyGenCommand() *cobra.Command {
@@ -20,7 +21,22 @@ func newKeyGenCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate <handle> <public-key>",
 		Short: "Generate a key and make it persistent",
-		Long: `Generate a key in the TPM and make the key persistent.
+		Long: `Generate a primary key in the TPM and make it persistent.
+
+Key attributes determine how the generated key can be used.
+The default attributes allow it to be used for signing and
+decryption. Refer to the TPM 2.0 specification, Part 2,
+Section 8.3 for a detailed description of the attributes.
+Available attributes:
+  fixedtpm
+  fixedparent
+  sensitivedataorigin
+  userwithauth
+  adminwithpolicy
+  noda
+  restricted
+  decrypt
+  sign
 
 Use '-' to write the key to STDOUT.`,
 		Example: `  tpmk key generate 0x81000000 public.pem`,
@@ -33,6 +49,7 @@ Use '-' to write the key to STDOUT.`,
 	flags := cmd.Flags()
 	flags.StringVarP(&opt.device, "device", "d", "/dev/tpmrm0", "TPM device, 'sim' for simulator")
 	flags.StringVarP(&opt.password, "password", "p", "", "Password")
+	flags.StringVarP(&opt.attr, "attributes", "a", "sign|decrypt|userwithauth|sensitivedataorigin", "Key attributes")
 	return cmd
 }
 
@@ -43,6 +60,10 @@ func runKeyGen(opt keygenOptions, args []string) error {
 		return err
 	}
 	output := args[1]
+	attr, err := parseKeyAttributes(opt.attr)
+	if err != nil {
+		return errors.Wrap(err, "key attributes")
+	}
 
 	// Open device or simulator
 	dev, err := tpmk.OpenDevice(opt.device)
@@ -52,7 +73,6 @@ func runKeyGen(opt keygenOptions, args []string) error {
 	defer dev.Close()
 
 	// Generate the key
-	attr := tpm2.FlagSign | tpm2.FlagFixedTPM | tpm2.FlagUserWithAuth | tpm2.FlagFixedParent | tpm2.FlagSensitiveDataOrigin
 	pub, err := tpmk.GenRSAPrimaryKey(dev, handle, opt.password, opt.password, attr)
 	if err != nil {
 		return err
