@@ -104,6 +104,7 @@ func TestMutualTLS(t *testing.T) {
 		Certificates: []tls.Certificate{clientCrt},
 		RootCAs:      caPool,
 	}
+
 	serverCfg := &tls.Config{
 		Certificates: []tls.Certificate{serverCrt},
 		ClientCAs:    caPool,
@@ -162,8 +163,8 @@ func TestSign(t *testing.T) {
 	}{
 		"RSA-PKCS#1 v1.5 with SHA1":   {digestSHA1[:], crypto.SHA1},
 		"RSA-PKCS#1 v1.5 with SHA256": {digestSHA256[:], crypto.SHA256},
-		"RSA-PSS with SHA1":           {digestSHA1[:], &rsa.PSSOptions{SaltLength: 0, Hash: crypto.SHA1}},
-		"RSA-PSS with SHA256":         {digestSHA256[:], &rsa.PSSOptions{SaltLength: 0, Hash: crypto.SHA256}},
+		"RSA-PSS with SHA1":           {digestSHA1[:], &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthAuto, Hash: crypto.SHA1}},
+		"RSA-PSS with SHA256":         {digestSHA256[:], &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthAuto, Hash: crypto.SHA256}},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -180,6 +181,65 @@ func TestSign(t *testing.T) {
 				err = rsa.VerifyPSS(pub.(*rsa.PublicKey), opts.Hash, test.digest, signature, opts)
 				require.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestDecrypt(t *testing.T) {
+	dev, err := simulator.Get()
+	require.NoError(t, err)
+
+	const (
+		handle = 0x81000000
+		pw     = ""
+		attr   = tpm2.FlagDecrypt | tpm2.FlagUserWithAuth | tpm2.FlagFixedParent | tpm2.FlagFixedTPM | tpm2.FlagSensitiveDataOrigin
+	)
+
+	pub, err := GenRSAPrimaryKey(dev, handle, pw, pw, attr)
+	require.NoError(t, err)
+	defer DeleteKey(dev, handle, pw)
+
+	// Use the key in the TPM for decryption
+	priv, err := NewRSAPrivateKey(dev, handle, pw)
+	require.NoError(t, err)
+
+	data := []byte("This is a test")
+
+	tests := map[string]struct {
+		opts crypto.DecrypterOpts
+	}{
+		"RSAES-PKCS1":                  {nil},
+		"RSAES-PKCS1 with options":     {&rsa.PKCS1v15DecryptOptions{}},
+		"RSAES-OAEP-SHA1":              {&rsa.OAEPOptions{Hash: crypto.SHA1}},
+		"RSAES-OAEP-SHA256":            {&rsa.OAEPOptions{Hash: crypto.SHA256}},
+		"RSAES-OAEP-SHA256 with label": {&rsa.OAEPOptions{Hash: crypto.SHA256, Label: []byte("label")}},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			var (
+				encrypted []byte
+				err       error
+			)
+
+			switch opts := test.opts.(type) {
+			case *rsa.OAEPOptions:
+				// The TPM only uses null-terminated labels, and those are included in the calculations.
+				// We need to do the same for the results to match, even though the null isn't really
+				// needed in the Go library for the same caluclations.
+				label := opts.Label
+				if len(label) > 0 {
+					label = append(label, 0)
+				}
+				encrypted, err = rsa.EncryptOAEP(opts.Hash.New(), rand.Reader, pub.(*rsa.PublicKey), data, label)
+			default:
+				encrypted, err = rsa.EncryptPKCS1v15(rand.Reader, pub.(*rsa.PublicKey), data)
+			}
+			require.NoError(t, err)
+
+			decrypted, err := priv.Decrypt(rand.Reader, encrypted, test.opts)
+			require.NoError(t, err)
+
+			require.Equal(t, data, decrypted)
 		})
 	}
 }

@@ -3,6 +3,7 @@ package tpmk
 import (
 	"crypto"
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"io"
 
@@ -70,7 +71,8 @@ var hashToName = map[crypto.Hash]string{
 }
 
 // Sign digests via a key in the TPM. Implements crypto.Signer. If opts are *rsa.PSSOptions,
-// the PSS signature algorithm is used, PKCS#1 1.5 otherwise.
+// the PSS signature algorithm is used, PKCS#1 1.5 otherwise. To use this function, tpm2.FlagSign
+// needs to be set on the key, and tpm2.FlagRestricted needs to be clear.
 func (k RSAPrivateKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
 	hash, ok := tpmToHashFunc[opts.HashFunc()]
 	if !ok {
@@ -89,4 +91,29 @@ func (k RSAPrivateKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpt
 		return nil, err
 	}
 	return sig.RSA.Signature, err
+}
+
+// Decrypt decrypts ciphertext with the key in the TPM. If opts is nil or of type
+// *PKCS1v15DecryptOptions then PKCS#1 v1.5 decryption is performed. Otherwise opts must have
+// type *OAEPOptions and OAEP decryption is performed. tpm2.FlagDecrypt needs to be set and
+// tpm2.FlagRestricted clear in the key properties. Implements crypto.Decrypter.
+// Note that using OAEP with a label requires a null-terminated string.
+func (k RSAPrivateKey) Decrypt(rand io.Reader, msg []byte, opts crypto.DecrypterOpts) ([]byte, error) {
+	switch opt := opts.(type) {
+	case *rsa.OAEPOptions:
+		hash, ok := tpmToHashFunc[opt.Hash]
+		if !ok {
+			return nil, fmt.Errorf("unsupported hash algorithm: %d (%s)", opt.Hash, hashToName[opt.Hash])
+		}
+		scheme := &tpm2.AsymScheme{
+			Alg:  tpm2.AlgOAEP,
+			Hash: hash,
+		}
+		return tpm2.RSADecrypt(k.dev, k.handle, k.password, msg, scheme, string(opt.Label))
+	case nil, *rsa.PKCS1v15DecryptOptions:
+		scheme := &tpm2.AsymScheme{Alg: tpm2.AlgRSAES}
+		return tpm2.RSADecrypt(k.dev, k.handle, k.password, msg, scheme, "")
+	default:
+		return nil, errors.New("invalid options for Decrypt")
+	}
 }
