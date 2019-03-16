@@ -125,10 +125,10 @@ func TestUnmarshalSSHCertificate(t *testing.T) {
 
 	// Encode the cert into OpenSSH format
 	// encoded := in.Marshal()
-	encoded := MarshalSSHPublic(in, in.KeyId)
+	encoded := MarshalOpenSSHPublic(in, in.KeyId)
 
 	// Decode OpenSSH format
-	decoded, err := UnmarshalSSHPublic(encoded)
+	decoded, err := ParseOpenSSHPublicKey(encoded)
 	require.NoError(t, err)
 
 	// Compare the decoded cert to what went in

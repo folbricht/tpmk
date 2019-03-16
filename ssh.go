@@ -8,15 +8,15 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// MarshalSSHPublic encodes a certificate or public key into a format that
+// MarshalOpenSSHPublic encodes a certificate or public key into a format that
 // can be used by OpenSSH.
-func MarshalSSHPublic(k ssh.PublicKey, id string) []byte {
+func MarshalOpenSSHPublic(k ssh.PublicKey, id string) []byte {
 	raw := k.Marshal()
 	return []byte(k.Type() + " " + base64.StdEncoding.EncodeToString(raw) + " " + id + "\n")
 }
 
-// UnmarshalSSHPublic parses a public key or certificate in OpenSSH format.
-func UnmarshalSSHPublic(encoded []byte) (ssh.PublicKey, error) {
+// ParseOpenSSHPublicKey parses a public key or certificate in OpenSSH format.
+func ParseOpenSSHPublicKey(encoded []byte) (ssh.PublicKey, error) {
 	parts := bytes.SplitN(encoded, []byte(" "), 3)
 	if len(parts) < 2 {
 		return nil, errors.New("public key or certificate not in OpenSSH format")

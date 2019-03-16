@@ -107,21 +107,3 @@ var stringToNVAttribute = map[string]tpm2.NVAttr{
 	"platformcreate": tpm2.AttrPlatformCreate,
 	"readstclear":    tpm2.AttrReadSTClear,
 }
-
-type sshFormat int
-
-const (
-	formatOpenSSH sshFormat = iota
-	formatWire
-)
-
-func parseSSHFormat(s string) (sshFormat, error) {
-	switch s {
-	case "openssh", "":
-		return formatOpenSSH, nil
-	case "wire":
-		return formatWire, nil
-	default:
-		return 0, fmt.Errorf("unsupported format '%s", s)
-	}
-}

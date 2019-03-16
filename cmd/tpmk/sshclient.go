@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -13,13 +14,14 @@ import (
 )
 
 type sshClientOptions struct {
-	device          string
-	keyPassword     string
-	crtPassword     string
-	hostKeyFile     string
-	clientKeyFile   string
-	clientKeyHandle string
-	insecure        bool
+	device      string
+	keyPassword string
+	crtPassword string
+	crtFormat   string
+	crtFile     string
+	crtHandle   string
+	hostKeyFile string
+	insecure    bool
 }
 
 func newSSHClientCommand() *cobra.Command {
@@ -42,16 +44,17 @@ and reads/writes to it via STDIN/STDOUT.`,
 	flags := cmd.Flags()
 	flags.StringVarP(&opt.device, "device", "d", "/dev/tpmrm0", "TPM device, 'sim' for simulator")
 	flags.StringVarP(&opt.keyPassword, "key-password", "p", "", "TPM key password")
-	flags.StringVarP(&opt.crtPassword, "crt-password", "n", "", "TPM NV index password")
 	flags.StringVarP(&opt.hostKeyFile, "host-key-file", "s", "", "Acceptable host key or CA")
-	flags.StringVarP(&opt.clientKeyFile, "client-crt-file", "c", "", "Client certificate file")
-	flags.StringVarP(&opt.clientKeyHandle, "client-crt-tpm", "i", "", "Read the client cert from TPM NV index")
+	flags.StringVarP(&opt.crtFile, "crt-file", "c", "", "Client certificate file")
+	flags.StringVarP(&opt.crtHandle, "crt-handle", "i", "", "Read the client cert from TPM NV index")
+	flags.StringVarP(&opt.crtPassword, "crt-password", "n", "", "TPM NV index password")
+	flags.StringVarP(&opt.crtFormat, "crt-format", "f", "openssh", "Format of the client cert")
 	flags.BoolVarP(&opt.insecure, "insecure", "k", false, "Accept any host key")
 	return cmd
 }
 
 func runSSHClient(opt sshClientOptions, args []string) error {
-	keyHandle, err := ParseHandle(args[0])
+	keyHandle, err := parseHandle(args[0])
 	if err != nil {
 		return err
 	}
@@ -65,7 +68,7 @@ func runSSHClient(opt sshClientOptions, args []string) error {
 	if !opt.insecure && opt.hostKeyFile == "" {
 		return errors.New("require either -k or -s")
 	}
-	if opt.clientKeyFile != "" && opt.clientKeyHandle != "" {
+	if opt.crtFile != "" && opt.crtHandle != "" {
 		return errors.New("can use either -c or -i, not both")
 	}
 
@@ -84,7 +87,7 @@ func runSSHClient(opt sshClientOptions, args []string) error {
 	}
 	defer dev.Close()
 
-	// Use the key in the TPM to make an ssh.Signer
+	// Use the key in the TPM to build an ssh.Signer
 	pk, err := tpmk.NewRSAPrivateKey(dev, keyHandle, opt.keyPassword)
 	if err != nil {
 		return errors.Wrap(err, "accessing key")
@@ -95,11 +98,11 @@ func runSSHClient(opt sshClientOptions, args []string) error {
 	}
 
 	// Use client certificate, if provided to extend the ssh.Signer with
-	if opt.clientKeyFile != "" || opt.clientKeyHandle != "" {
+	if opt.crtFile != "" || opt.crtHandle != "" {
 		var b []byte
 		var err error
-		if opt.clientKeyHandle != "" { // Read the cert from NV
-			crtHandle, err := ParseHandle(opt.clientKeyHandle)
+		if opt.crtHandle != "" { // Read the cert from NV
+			crtHandle, err := parseHandle(opt.crtHandle)
 			if err != nil {
 				return err
 			}
@@ -108,20 +111,33 @@ func runSSHClient(opt sshClientOptions, args []string) error {
 				return errors.Wrap(err, "reading crt from TPM")
 			}
 		} else { // Read the cert from file
-			b, err = ioutil.ReadFile(opt.clientKeyFile)
+			b, err = ioutil.ReadFile(opt.crtFile)
 			if err != nil {
 				return errors.Wrap(err, "reading client crt file")
 			}
 		}
 
-		pub, err := tpmk.UnmarshalSSHPublic(b)
+		// Unmarshall the certificate according to the provided format
+		var pub ssh.PublicKey
+		switch opt.crtFormat {
+		case "openssh":
+			pub, err = tpmk.ParseOpenSSHPublicKey(b)
+		case "wire":
+			pub, err = ssh.ParsePublicKey(b)
+		default:
+			return fmt.Errorf("unsupported certificate format '%s", opt.crtFormat)
+		}
 		if err != nil {
 			return errors.Wrap(err, "parsing client crt file")
 		}
+
+		// Make sure the provided cert really was one
 		crt, ok := pub.(*ssh.Certificate)
 		if !ok {
 			return errors.New("client cert file not of the right type")
 		}
+
+		// Extend the signer used in the handshake to present the cert to the server
 		signer, err = ssh.NewCertSigner(crt, signer)
 		if err != nil {
 			return err
