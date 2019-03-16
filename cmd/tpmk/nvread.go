@@ -37,7 +37,7 @@ Use '-' to print the data to STDOUT.`,
 
 func runNVRead(opt nvReadOptions, args []string) error {
 	// Parse arguments
-	index, err := ParseHandle(args[0])
+	index, err := parseHandle(args[0])
 	if err != nil {
 		return err
 	}

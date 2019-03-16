@@ -164,7 +164,7 @@ First, the public key is read from the TPM. The result is PEM encoded PKCS#1.
 tpmk key read 0x81000000 pub.pem
 ```
 
-To generate and sign an SSH certificate, an SSH CA key is required which is provided as file (ssh-ca) in this example. A key identifier, serial or certificate option can be provided.
+To generate and sign an SSH certificate, an SSH CA key is required which is provided as file (ssh-ca) in this example. A key identifier, serial or certificate option can be provided. If the generated certificate is to be stored in an NV index, the `-f wire` option is recommended as this will produce a more compact encoding.
 
 ```sh
 tpmk ssh certificate --ca-key ssh-ca --id myKey -O force-command=ls pub.pem tpm-cert.pub

@@ -35,7 +35,7 @@ Use '-' to write the key to STDOUT.`,
 
 func runKeyRead(opt keyReadOptions, args []string) error {
 	// Parse arguments
-	handle, err := ParseHandle(args[0])
+	handle, err := parseHandle(args[0])
 	if err != nil {
 		return err
 	}

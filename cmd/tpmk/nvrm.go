@@ -35,7 +35,7 @@ Use '-' to print the data to STDOUT.`,
 
 func runNVRm(opt nvRmOptions, args []string) error {
 	// Parse arguments
-	index, err := ParseHandle(args[0])
+	index, err := parseHandle(args[0])
 	if err != nil {
 		return err
 	}

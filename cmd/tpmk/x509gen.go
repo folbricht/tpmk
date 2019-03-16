@@ -63,7 +63,7 @@ func runx509Gen(opt x509GenOptions, args []string) error {
 	keyfile := args[0]
 	crtfile := args[1]
 
-	expiry, err := ParseDuration(opt.duration)
+	expiry, err := parseDuration(opt.duration)
 	if err != nil {
 		return errors.Wrap(err, "parsing valid-for")
 	}

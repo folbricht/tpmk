@@ -32,7 +32,7 @@ func newKeyrmCommand() *cobra.Command {
 
 func runKeyRm(opt keyrmOptions, args []string) error {
 	// Parse arguments
-	handle, err := ParseHandle(args[0])
+	handle, err := parseHandle(args[0])
 	if err != nil {
 		return err
 	}

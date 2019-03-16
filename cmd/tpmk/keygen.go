@@ -55,7 +55,7 @@ Use '-' to write the key to STDOUT.`,
 
 func runKeyGen(opt keygenOptions, args []string) error {
 	// Parse arguments
-	handle, err := ParseHandle(args[0])
+	handle, err := parseHandle(args[0])
 	if err != nil {
 		return err
 	}

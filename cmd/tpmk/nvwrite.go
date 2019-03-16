@@ -65,7 +65,7 @@ Use '-' to read the data from STDIN.`,
 
 func runNVWrite(opt nvwriteOptions, args []string) error {
 	// Parse arguments
-	index, err := ParseHandle(args[0])
+	index, err := parseHandle(args[0])
 	if err != nil {
 		return err
 	}
