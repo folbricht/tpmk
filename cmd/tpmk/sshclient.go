@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-type sshConnectOptions struct {
+type sshClientOptions struct {
 	device          string
 	keyPassword     string
 	crtPassword     string
@@ -22,20 +22,20 @@ type sshConnectOptions struct {
 	insecure        bool
 }
 
-func newSSHConnectCommand() *cobra.Command {
-	var opt sshConnectOptions
+func newSSHClientCommand() *cobra.Command {
+	var opt sshClientOptions
 
 	cmd := &cobra.Command{
-		Use:   "connect <handle> <user@host:port> <command>",
+		Use:   "client <handle> <user@host:port> <command>",
 		Short: "Execute a command remotely",
 		Long: `Executes a command on an SSH server using a key in the TPM
 and reads/writes to it via STDIN/STDOUT.`,
-		Example: `  tpmk ssh connect 0x81000000 root@host:22 "ls -l"
+		Example: `  tpmk ssh client 0x81000000 root@host:22 "ls -l"
 
-  tpmk ssh connect -i 0x1500000 -s ca.pub 0x81000000 root@host:22 "whoami"`,
+  tpmk ssh client -i 0x1500000 -s ca.pub 0x81000000 root@host:22 "whoami"`,
 		Args: cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSSHConnect(opt, args)
+			return runSSHClient(opt, args)
 		},
 		SilenceUsage: true,
 	}
@@ -50,7 +50,7 @@ and reads/writes to it via STDIN/STDOUT.`,
 	return cmd
 }
 
-func runSSHConnect(opt sshConnectOptions, args []string) error {
+func runSSHClient(opt sshClientOptions, args []string) error {
 	keyHandle, err := ParseHandle(args[0])
 	if err != nil {
 		return err

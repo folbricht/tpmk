@@ -13,7 +13,7 @@ func newSSHCommand() *cobra.Command {
 	cmd.AddCommand(
 		newSSHCertCommand(),
 		newSSHPubCommand(),
-		newSSHConnectCommand(),
+		newSSHClientCommand(),
 	)
 	return cmd
 }

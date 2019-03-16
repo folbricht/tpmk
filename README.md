@@ -50,6 +50,7 @@ go get -u github.com/folbricht/tpmk/cmd/tpmk
 
   - `certificate` Create and sign an SSH certificate
   - `pub` Convert a PKCS1 key to OpenSSH format
+  - `client` Start SSH client and execute command remotely
 
 ## Use-cases / Examples
 
