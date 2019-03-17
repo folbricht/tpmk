@@ -7,13 +7,23 @@ import (
 	"github.com/google/go-tpm/tpmutil/mssim"
 )
 
-// OpenDevice opens a TPM2. If device is 'sim', it'll connect to a simulator. The caller is responsible
-// for calling Close().
+// SimDev is used for testing. When set, calling OpenDevice("sim") will return it instead
+// of trying to connect to a simulator. Used in command tests that first setup an internal
+// simltor, set SimDev, then call the command with "sim" as device name.
+var SimDev io.ReadWriteCloser
+
+// OpenDevice opens a TPM2. If device is 'sim', it'll connect to a simulator on localhost:2321.
+// The caller is responsible for calling Close().
 func OpenDevice(device string) (io.ReadWriteCloser, error) {
-	if device == "sim" {
+	switch device {
+	case "sim":
+		if SimDev != nil {
+			return SimDev, nil
+		}
 		return OpenSim()
+	default:
+		return tpm2.OpenTPM(device)
 	}
-	return tpm2.OpenTPM(device)
 }
 
 // Simulator is a wrapper around a simulator connection that ensures startup and shutdown are called on open/close.

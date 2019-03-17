@@ -47,7 +47,7 @@ func parseKeyAttributes(s string) (tpm2.KeyProp, error) {
 	for _, prop := range strings.Split(s, "|") {
 		v, ok := stringToKeyAttribute[prop]
 		if !ok {
-			return keyProp, fmt.Errorf("unknown attribute operty '%s'", prop)
+			return keyProp, fmt.Errorf("unknown attribute property '%s'", prop)
 		}
 		keyProp |= v
 	}
