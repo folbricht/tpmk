@@ -1,6 +1,6 @@
 module github.com/folbricht/tpmk
 
-go 1.12
+go 1.11
 
 require (
 	github.com/google/go-tpm v0.1.2-0.20190306182045-7a7fe86fbbf2
