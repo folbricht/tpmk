@@ -20,6 +20,8 @@ type nopCloser struct {
 
 func (nopCloser) Close() error { return nil }
 
+type knownHostFunc func(t *testing.T, addr string) string
+
 func TestSSHClient(t *testing.T) {
 	tmpdir, err := ioutil.TempDir("", "tpmk")
 	require.NoError(t, err)
@@ -92,53 +94,68 @@ func TestSSHClient(t *testing.T) {
 	hostKeyCrtBad := hostKeyFromFile(t, hostKeyFileBad, hostCrtFileBad)
 
 	tests := map[string]struct {
-		hostKey   ssh.Signer
-		args      []string
-		shoudFail bool
+		hostKey       ssh.Signer
+		args          []string
+		shoudFail     bool
+		genKnownHosts knownHostFunc
 	}{
 		"Insecure": {
 			hostKey:   hostKeyGood,
-			args:      []string{"-d", "sim", "--insecure", keyHandle},
+			args:      []string{"-d", "sim", "-k", keyHandle},
 			shoudFail: false,
 		},
 		"Simple Host Key": {
-			hostKey:   hostKeyGood,
-			args:      []string{"-d", "sim", "--host-key-file", hostPubFile, keyHandle},
-			shoudFail: false,
+			hostKey:       hostKeyGood,
+			args:          []string{"-d", "sim", keyHandle},
+			shoudFail:     false,
+			genKnownHosts: makeKnownHostsKey(tmpdir, hostPubFile),
 		},
 		"Signed Host Key": {
-			hostKey:   hostKeyCrtGood,
-			args:      []string{"-d", "sim", "--host-key-file", caPubFile, keyHandle},
-			shoudFail: false,
+			hostKey:       hostKeyCrtGood,
+			args:          []string{"-d", "sim", keyHandle},
+			shoudFail:     false,
+			genKnownHosts: makeKnownHostsCrt(tmpdir, caPubFile),
 		},
 		"Signed Host Key With Client CRT in TPM": {
-			hostKey:   hostKeyCrtGood,
-			args:      []string{"-d", "sim", "--crt-handle", crtHandle, "--crt-format", "wire", "--host-key-file", caPubFile, keyHandle},
-			shoudFail: false,
+			hostKey:       hostKeyCrtGood,
+			args:          []string{"-d", "sim", "--crt-handle", crtHandle, "--crt-format", "wire", keyHandle},
+			shoudFail:     false,
+			genKnownHosts: makeKnownHostsCrt(tmpdir, caPubFile),
 		},
 		"Signed Host Key with Wrong Cert Type": {
-			hostKey:   hostKeyCrtWrongType,
-			args:      []string{"-d", "sim", "--host-key-file", caPubFile, keyHandle},
-			shoudFail: true,
+			hostKey:       hostKeyCrtWrongType,
+			args:          []string{"-d", "sim", keyHandle},
+			shoudFail:     true,
+			genKnownHosts: makeKnownHostsCrt(tmpdir, caPubFile),
 		},
 		"Wrong Host Key": {
-			hostKey:   hostKeyBad,
-			args:      []string{"-d", "sim", "--host-key-file", hostPubFile, keyHandle},
-			shoudFail: true,
+			hostKey:       hostKeyBad,
+			args:          []string{"-d", "sim", keyHandle},
+			shoudFail:     true,
+			genKnownHosts: makeKnownHostsCrt(tmpdir, caPubFile),
 		},
 		"Wrong Host Certificate": {
-			hostKey:   hostKeyCrtBad,
-			args:      []string{"-d", "sim", "--host-key-file", hostPubFile, keyHandle},
-			shoudFail: true,
+			hostKey:       hostKeyCrtBad,
+			args:          []string{"-d", "sim", keyHandle},
+			shoudFail:     true,
+			genKnownHosts: makeKnownHostsCrt(tmpdir, caPubFile),
 		},
 	}
 	for name, test := range tests {
+		// name := "Signed Host Key"
+		// test := tests[name]
 		t.Run(name, func(t *testing.T) {
 			// Start an SSH server
 			server := sshtest.NewServer(test.hostKey)
 			defer server.Close()
 
-			// Expand the command line args with the right endpoint address
+			// Build a temp known_hosts file, prepend the prefix (if certificate) and endpoint addr
+			if test.genKnownHosts != nil {
+				knownHosts := test.genKnownHosts(t, server.Endpoint)
+				test.args = append(test.args, "--known-hosts", knownHosts)
+			}
+
+			// Expand the command line args with the right endpoint address and known_hosts
 			test.args = append(test.args, "root@"+server.Endpoint, "")
 
 			// Run the command and make sure we got the expected error
@@ -174,4 +191,29 @@ func hostKeyFromFile(t *testing.T, keyfile, crtfile string) ssh.Signer {
 		require.NoError(t, err)
 	}
 	return hostKey
+}
+
+func makeKnownHostsKey(tmpdir, pubFile string) knownHostFunc {
+	return func(t *testing.T, addr string) string {
+		return prefixTempFile(t, tmpdir, addr+" ", pubFile)
+	}
+}
+func makeKnownHostsCrt(tmpdir, pubFile string) knownHostFunc {
+	return func(t *testing.T, addr string) string {
+		return prefixTempFile(t, tmpdir, "@cert-authority "+addr+" ", pubFile)
+	}
+}
+
+// Creates a tempfile in the given directory, writes the prefix and then the content of file
+func prefixTempFile(t *testing.T, tmpdir, prefix, file string) string {
+	f, err := ioutil.TempFile(tmpdir, "")
+	require.NoError(t, err)
+	defer f.Close()
+	b, err := ioutil.ReadFile(file)
+	require.NoError(t, err)
+	if prefix != "" {
+		f.WriteString(prefix + " ")
+	}
+	f.Write(b)
+	return f.Name()
 }
