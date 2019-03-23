@@ -10,8 +10,8 @@ import (
 
 	"golang.org/x/crypto/ssh/knownhosts"
 
+	"github.com/folbricht/sshtest"
 	"github.com/folbricht/tpmk"
-	"github.com/folbricht/tpmk/sshtest"
 	"github.com/google/go-tpm-tools/simulator"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"
@@ -163,9 +163,7 @@ func runClient(args ...string) error {
 }
 
 func startServer(t *testing.T, hostKey, hostCrt string) (string, *sshtest.Server) {
-	key, err := sshtest.KeyFromFile(hostKey, hostCrt)
-	require.NoError(t, err)
-
+	key := sshtest.KeyFromFile(hostKey, hostCrt)
 	server := sshtest.NewServer(key)
 	return server.Endpoint, server
 }
