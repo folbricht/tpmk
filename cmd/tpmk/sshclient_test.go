@@ -5,7 +5,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"golang.org/x/crypto/ssh/knownhosts"
 
 	"github.com/folbricht/tpmk"
 	"github.com/folbricht/tpmk/sshtest"
@@ -19,8 +22,6 @@ type nopCloser struct {
 }
 
 func (nopCloser) Close() error { return nil }
-
-type knownHostFunc func(t *testing.T, addr string) string
 
 func TestSSHClient(t *testing.T) {
 	tmpdir, err := ioutil.TempDir("", "tpmk")
@@ -38,13 +39,6 @@ func TestSSHClient(t *testing.T) {
 	clientCrtFile := filepath.Join(tmpdir, "id_rsa-cert.pub")
 	clientCrtFileWire := filepath.Join(tmpdir, "id_rsa_wire-cert.pub")
 	caKeyFile := filepath.Join("testdata", "ssh-ca")
-	caPubFile := filepath.Join("testdata", "ssh-ca.pub")
-	hostKeyFile := filepath.Join("testdata", "ssh-host-key")
-	hostPubFile := filepath.Join("testdata", "ssh-host-key.pub")
-	hostCrtFile := filepath.Join("testdata", "ssh-host-key-cert.pub")
-	hostCrtFileWrongType := filepath.Join("testdata", "ssh-host-key-cert-wrong-type.pub")
-	hostKeyFileBad := filepath.Join("testdata", "ssh-host-key-bad")
-	hostCrtFileBad := filepath.Join("testdata", "ssh-host-key-bad-cert.pub")
 
 	// Open sim device
 	var dev io.ReadWriteCloser
@@ -86,134 +80,92 @@ func TestSSHClient(t *testing.T) {
 	err = cmd.Execute()
 	require.NoError(t, err)
 
-	// Read the host keys/certs
-	hostKeyGood := hostKeyFromFile(t, hostKeyFile, "")
-	hostKeyCrtGood := hostKeyFromFile(t, hostKeyFile, hostCrtFile)
-	hostKeyCrtWrongType := hostKeyFromFile(t, hostKeyFile, hostCrtFileWrongType)
-	hostKeyBad := hostKeyFromFile(t, hostKeyFileBad, "")
-	hostKeyCrtBad := hostKeyFromFile(t, hostKeyFileBad, hostCrtFileBad)
+	t.Run("Insecure", func(t *testing.T) {
+		endpoint, server := startServer(t, "testdata/ssh-host-key", "")
+		defer server.Close()
+		err := runClient("-d", "sim", "-k", keyHandle, "user@"+endpoint, "")
+		require.NoError(t, err)
+	})
 
-	tests := map[string]struct {
-		hostKey       ssh.Signer
-		args          []string
-		shoudFail     bool
-		genKnownHosts knownHostFunc
-	}{
-		"Insecure": {
-			hostKey:   hostKeyGood,
-			args:      []string{"-d", "sim", "-k", keyHandle},
-			shoudFail: false,
-		},
-		"Simple Host Key": {
-			hostKey:       hostKeyGood,
-			args:          []string{"-d", "sim", keyHandle},
-			shoudFail:     false,
-			genKnownHosts: makeKnownHostsKey(tmpdir, hostPubFile),
-		},
-		"Signed Host Key": {
-			hostKey:       hostKeyCrtGood,
-			args:          []string{"-d", "sim", keyHandle},
-			shoudFail:     false,
-			genKnownHosts: makeKnownHostsCrt(tmpdir, caPubFile),
-		},
-		"Signed Host Key With Client CRT in TPM": {
-			hostKey:       hostKeyCrtGood,
-			args:          []string{"-d", "sim", "--crt-handle", crtHandle, "--crt-format", "wire", keyHandle},
-			shoudFail:     false,
-			genKnownHosts: makeKnownHostsCrt(tmpdir, caPubFile),
-		},
-		"Signed Host Key with Wrong Cert Type": {
-			hostKey:       hostKeyCrtWrongType,
-			args:          []string{"-d", "sim", keyHandle},
-			shoudFail:     true,
-			genKnownHosts: makeKnownHostsCrt(tmpdir, caPubFile),
-		},
-		"Wrong Host Key": {
-			hostKey:       hostKeyBad,
-			args:          []string{"-d", "sim", keyHandle},
-			shoudFail:     true,
-			genKnownHosts: makeKnownHostsCrt(tmpdir, caPubFile),
-		},
-		"Wrong Host Certificate": {
-			hostKey:       hostKeyCrtBad,
-			args:          []string{"-d", "sim", keyHandle},
-			shoudFail:     true,
-			genKnownHosts: makeKnownHostsCrt(tmpdir, caPubFile),
-		},
-	}
-	for name, test := range tests {
-		// name := "Signed Host Key"
-		// test := tests[name]
-		t.Run(name, func(t *testing.T) {
-			// Start an SSH server
-			server := sshtest.NewServer(test.hostKey)
-			defer server.Close()
+	t.Run("Simple Host Key", func(t *testing.T) {
+		endpoint, server := startServer(t, "testdata/ssh-host-key", "")
+		defer server.Close()
+		knownHostsFile := buildKnownHosts(t, tmpdir, endpoint, "testdata/ssh-host-key.pub", false)
+		err := runClient("-d", "sim", "--known-hosts", knownHostsFile, keyHandle, "user@"+endpoint, "")
+		require.NoError(t, err)
+	})
 
-			// Build a temp known_hosts file, prepend the prefix (if certificate) and endpoint addr
-			if test.genKnownHosts != nil {
-				knownHosts := test.genKnownHosts(t, server.Endpoint)
-				test.args = append(test.args, "--known-hosts", knownHosts)
-			}
+	t.Run("Signed Host Key", func(t *testing.T) {
+		endpoint, server := startServer(t, "testdata/ssh-host-key", "testdata/ssh-host-key-cert.pub")
+		defer server.Close()
+		knownHostsFile := buildKnownHosts(t, tmpdir, endpoint, "testdata/ssh-ca.pub", true)
+		err := runClient("-d", "sim", "--known-hosts", knownHostsFile, keyHandle, "user@"+endpoint, "")
+		require.NoError(t, err)
+	})
 
-			// Expand the command line args with the right endpoint address and known_hosts
-			test.args = append(test.args, "root@"+server.Endpoint, "")
+	t.Run("Client Cert in TPM", func(t *testing.T) {
+		endpoint, server := startServer(t, "testdata/ssh-host-key", "testdata/ssh-host-key-cert.pub")
+		defer server.Close()
+		knownHostsFile := buildKnownHosts(t, tmpdir, endpoint, "testdata/ssh-ca.pub", true)
+		err := runClient("-d", "sim", "--known-hosts", knownHostsFile, "--crt-handle", crtHandle, "--crt-format", "wire", keyHandle, "user@"+endpoint, "")
+		require.NoError(t, err)
+	})
 
-			// Run the command and make sure we got the expected error
-			cmd := newSSHClientCommand()
-			cmd.SetArgs(test.args)
-			cmd.SilenceErrors = true
-			err = cmd.Execute()
-			if test.shoudFail {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
+	t.Run("Signed Host Key with Wrong Cert Type", func(t *testing.T) {
+		endpoint, server := startServer(t, "testdata/ssh-host-key", "testdata/ssh-host-key-cert-wrong-type.pub")
+		defer server.Close()
+		knownHostsFile := buildKnownHosts(t, tmpdir, endpoint, "testdata/ssh-ca.pub", true)
+		err := runClient("-d", "sim", "--known-hosts", knownHostsFile, "--crt-handle", crtHandle, "--crt-format", "wire", keyHandle, "user@"+endpoint, "")
+		require.Error(t, err)
+	})
+
+	t.Run("Wrong Host Key", func(t *testing.T) {
+		endpoint, server := startServer(t, "testdata/ssh-host-key-bad", "")
+		defer server.Close()
+		knownHostsFile := buildKnownHosts(t, tmpdir, endpoint, "testdata/ssh-host-key.pub", false)
+		err := runClient("-d", "sim", "--known-hosts", knownHostsFile, keyHandle, "user@"+endpoint, "")
+		require.Error(t, err)
+	})
+
+	t.Run("Wrong Host Certificate", func(t *testing.T) {
+		endpoint, server := startServer(t, "testdata/ssh-host-key-bad", "testdata/ssh-host-key-bad-cert.pub")
+		defer server.Close()
+		knownHostsFile := buildKnownHosts(t, tmpdir, endpoint, "testdata/ssh-ca.pub", true)
+		err := runClient("-d", "sim", "--known-hosts", knownHostsFile, keyHandle, "user@"+endpoint, "")
+		require.Error(t, err)
+	})
+
 }
 
-func hostKeyFromFile(t *testing.T, keyfile, crtfile string) ssh.Signer {
+func buildKnownHosts(t *testing.T, tmpdir, addr, keyfile string, isCA bool) string {
 	b, err := ioutil.ReadFile(keyfile)
 	require.NoError(t, err)
-	hostKey, err := ssh.ParsePrivateKey(b)
+	pub, err := tpmk.ParseOpenSSHPublicKey(b)
 	require.NoError(t, err)
-	// If a cert is provided as well, extend the ssh.Signer with a cert
-	if crtfile != "" {
-		b, err := ioutil.ReadFile(crtfile)
-		require.NoError(t, err)
-		pub, err := tpmk.ParseOpenSSHPublicKey(b)
-		require.NoError(t, err)
-		crt, ok := pub.(*ssh.Certificate)
-		if !ok {
-			require.True(t, ok, "client cert file not of the right type")
-		}
-		hostKey, err = ssh.NewCertSigner(crt, hostKey)
-		require.NoError(t, err)
+	ln := knownhosts.Line([]string{addr}, pub)
+	if isCA {
+		ln = "@cert-authority " + ln
 	}
-	return hostKey
-}
 
-func makeKnownHostsKey(tmpdir, pubFile string) knownHostFunc {
-	return func(t *testing.T, addr string) string {
-		return prefixTempFile(t, tmpdir, addr+" ", pubFile)
-	}
-}
-func makeKnownHostsCrt(tmpdir, pubFile string) knownHostFunc {
-	return func(t *testing.T, addr string) string {
-		return prefixTempFile(t, tmpdir, "@cert-authority "+addr+" ", pubFile)
-	}
-}
-
-// Creates a tempfile in the given directory, writes the prefix and then the content of file
-func prefixTempFile(t *testing.T, tmpdir, prefix, file string) string {
 	f, err := ioutil.TempFile(tmpdir, "")
 	require.NoError(t, err)
 	defer f.Close()
-	b, err := ioutil.ReadFile(file)
+	_, err = io.Copy(f, strings.NewReader(ln))
 	require.NoError(t, err)
-	if prefix != "" {
-		f.WriteString(prefix + " ")
-	}
-	f.Write(b)
 	return f.Name()
+}
+
+func runClient(args ...string) error {
+	cmd := newSSHClientCommand()
+	cmd.SetArgs(args)
+	cmd.SilenceErrors = true
+	return cmd.Execute()
+}
+
+func startServer(t *testing.T, hostKey, hostCrt string) (string, *sshtest.Server) {
+	key, err := sshtest.KeyFromFile(hostKey, hostCrt)
+	require.NoError(t, err)
+
+	server := sshtest.NewServer(key)
+	return server.Endpoint, server
 }

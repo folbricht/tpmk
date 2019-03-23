@@ -32,10 +32,22 @@ func newSSHClientCommand() *cobra.Command {
 		Use:   "client <handle> <user@host:port> <command>",
 		Short: "Execute a command remotely",
 		Long: `Executes a command on an SSH server using a key in the TPM
-and reads/writes to it via STDIN/STDOUT.`,
+and reads/writes to it via STDIN/STDOUT. Supports host and
+client certificates, with the client certificate optionally
+read from an NV index in the TPM as well.
+
+Unless -k is used, a know hosts file in OpenSSH format needs
+to be provided with --known-hosts/-s. If none is given in the
+command line, $HOME/.ssh/known_hosts will be used if available
+followed by /etc/ssh/ssh_known_hosts.
+
+Note that no assumptions are made regarding user or port. Both
+need to be speficied in the command in the typical format:
+<user>@<host>:<port>
+`,
 		Example: `  tpmk ssh client 0x81000000 root@host:22 "ls -l"
 
-  tpmk ssh client -i 0x1500000 -s ca.pub 0x81000000 root@host:22 "whoami"`,
+  tpmk ssh client -i 0x1500000 0x81000000 root@host:22 "whoami"`,
 		Args: cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runSSHClient(opt, args)
@@ -47,7 +59,7 @@ and reads/writes to it via STDIN/STDOUT.`,
 	flags.StringVarP(&opt.keyPassword, "key-password", "p", "", "TPM key password")
 	flags.StringVarP(&opt.knownHostsFile, "known-hosts", "s", "", "Acceptable host keys or certs")
 	flags.StringVarP(&opt.crtFile, "crt-file", "c", "", "Client certificate file")
-	flags.StringVarP(&opt.crtHandle, "crt-handle", "i", "", "Read the client cert from TPM NV index")
+	flags.StringVarP(&opt.crtHandle, "crt-handle", "i", "", "Read the client cert from a TPM NV index")
 	flags.StringVarP(&opt.crtPassword, "crt-password", "n", "", "TPM NV index password")
 	flags.StringVarP(&opt.crtFormat, "crt-format", "f", "openssh", "Format of the client cert")
 	flags.BoolVarP(&opt.insecure, "insecure", "k", false, "Accept any host key")
