@@ -43,7 +43,7 @@ func parseOptionsMap(opt []string) map[string]string {
 // tpm2.FlagSign | tpm2.FlagFixedTPM | tpm2.FlagFixedParent.
 func parseKeyAttributes(s string) (tpm2.KeyProp, error) {
 	var keyProp tpm2.KeyProp
-	s = strings.ReplaceAll(s, " ", "")
+	s = strings.Replace(s, " ", "", -1)
 	for _, prop := range strings.Split(s, "|") {
 		v, ok := stringToKeyAttribute[prop]
 		if !ok {
@@ -60,7 +60,7 @@ func parseKeyAttributes(s string) (tpm2.KeyProp, error) {
 // tpm2.AttrOwnerWrite | tpm2.AttrOwnerRead | tpm2.AttrAuthRead | tpm2.AttrPPRead.
 func parseNVAttributes(s string) (tpm2.NVAttr, error) {
 	var nvAttr tpm2.NVAttr
-	s = strings.ReplaceAll(s, " ", "")
+	s = strings.Replace(s, " ", "", -1)
 	for _, prop := range strings.Split(s, "|") {
 		v, ok := stringToNVAttribute[prop]
 		if !ok {
