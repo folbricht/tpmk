@@ -43,11 +43,11 @@ func parseOptionsMap(opt []string) map[string]string {
 // tpm2.FlagSign | tpm2.FlagFixedTPM | tpm2.FlagFixedParent.
 func parseKeyAttributes(s string) (tpm2.KeyProp, error) {
 	var keyProp tpm2.KeyProp
-	s = strings.ReplaceAll(s, " ", "")
+	s = strings.Replace(s, " ", "", -1)
 	for _, prop := range strings.Split(s, "|") {
 		v, ok := stringToKeyAttribute[prop]
 		if !ok {
-			return keyProp, fmt.Errorf("unknown attribute operty '%s'", prop)
+			return keyProp, fmt.Errorf("unknown attribute property '%s'", prop)
 		}
 		keyProp |= v
 	}
@@ -60,7 +60,7 @@ func parseKeyAttributes(s string) (tpm2.KeyProp, error) {
 // tpm2.AttrOwnerWrite | tpm2.AttrOwnerRead | tpm2.AttrAuthRead | tpm2.AttrPPRead.
 func parseNVAttributes(s string) (tpm2.NVAttr, error) {
 	var nvAttr tpm2.NVAttr
-	s = strings.ReplaceAll(s, " ", "")
+	s = strings.Replace(s, " ", "", -1)
 	for _, prop := range strings.Split(s, "|") {
 		v, ok := stringToNVAttribute[prop]
 		if !ok {
@@ -106,22 +106,4 @@ var stringToNVAttribute = map[string]tpm2.NVAttr{
 	"written":        tpm2.AttrWritten,
 	"platformcreate": tpm2.AttrPlatformCreate,
 	"readstclear":    tpm2.AttrReadSTClear,
-}
-
-type sshFormat int
-
-const (
-	formatOpenSSH sshFormat = iota
-	formatWire
-)
-
-func parseSSHFormat(s string) (sshFormat, error) {
-	switch s {
-	case "openssh", "":
-		return formatOpenSSH, nil
-	case "wire":
-		return formatWire, nil
-	default:
-		return 0, fmt.Errorf("unsupported format '%s", s)
-	}
 }

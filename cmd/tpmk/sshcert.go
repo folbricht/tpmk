@@ -61,10 +61,6 @@ to STDOUT.`,
 func runSSHCert(opt sshCertOptions, args []string) error {
 	keyfile := args[0]
 	crtfile := args[1]
-	format, err := parseSSHFormat(opt.outFormat)
-	if err != nil {
-		return err
-	}
 
 	// Parse certificate options and extensions
 	criticalOptions := parseOptionsMap(opt.options)
@@ -126,13 +122,13 @@ func runSSHCert(opt sshCertOptions, args []string) error {
 
 	// Marshal the cert into the desired format
 	var b []byte
-	switch format {
-	case formatOpenSSH:
-		b = tpmk.MarshalSSHPublic(&cert, cert.KeyId)
-	case formatWire:
+	switch opt.outFormat {
+	case "openssh":
+		b = tpmk.MarshalOpenSSHPublic(&cert, cert.KeyId)
+	case "wire":
 		b = cert.Marshal()
 	default:
-		return fmt.Errorf("unsupported output format %d", format)
+		return fmt.Errorf("unsupported output format '%s'", opt.outFormat)
 	}
 
 	// Write it to file or STDOUT

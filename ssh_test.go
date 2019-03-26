@@ -1,6 +1,9 @@
 package tpmk
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"math"
 	"net"
 	"testing"
 
@@ -86,4 +89,50 @@ func TestSSHClient(t *testing.T) {
 
 	// Perform SSH handshake with the server
 	ssh.NewClient(c, chans, reqs)
+}
+
+func TestUnmarshalSSHCertificate(t *testing.T) {
+	// Generate am SSH CA
+	ca, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	sshCA, err := ssh.NewSignerFromSigner(ca)
+	require.NoError(t, err)
+
+	// Generate a key for the cert
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	sshPublic, err := ssh.NewPublicKey(key.Public())
+	require.NoError(t, err)
+
+	// Build a cert for the key, and sign it with the CA
+	in := &ssh.Certificate{
+		Serial:      123,
+		Key:         sshPublic,
+		CertType:    ssh.UserCert,
+		KeyId:       "test",
+		ValidAfter:  0,
+		ValidBefore: math.MaxUint64,
+		Reserved:    []uint8{},
+		Permissions: ssh.Permissions{
+			CriticalOptions: map[string]string{
+				"force-command": "ls",
+			},
+			Extensions: map[string]string{},
+		},
+	}
+	err = in.SignCert(rand.Reader, sshCA)
+	require.NoError(t, err)
+
+	// Encode the cert into OpenSSH format
+	// encoded := in.Marshal()
+	encoded := MarshalOpenSSHPublic(in, in.KeyId)
+
+	// Decode OpenSSH format
+	decoded, err := ParseOpenSSHPublicKey(encoded)
+	require.NoError(t, err)
+
+	// Compare the decoded cert to what went in
+	out, ok := decoded.(*ssh.Certificate)
+	require.True(t, ok)
+	require.Equal(t, in, out)
 }

@@ -35,7 +35,7 @@ go get -u github.com/folbricht/tpmk/cmd/tpmk
   - `rm` Removes a persistent key
   - `ls` List persistent keys
 
-- `nv` Contains commands to operate on non-volatile indexes in the TMP
+- `nv` Contains commands to operate on non-volatile indexes in the TPM
 
   - `write` Write arbitrary data into an index
   - `read` Read data from an index
@@ -50,6 +50,7 @@ go get -u github.com/folbricht/tpmk/cmd/tpmk
 
   - `certificate` Create and sign an SSH certificate
   - `pub` Convert a PKCS1 key to OpenSSH format
+  - `client` Start SSH client and execute remote command
 
 ## Use-cases / Examples
 
