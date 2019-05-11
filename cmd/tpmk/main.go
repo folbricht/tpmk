@@ -15,6 +15,7 @@ func main() {
 		newx509Command(),
 		newSSHCommand(),
 	)
+	rootCmd.SetOutput(os.Stderr)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
