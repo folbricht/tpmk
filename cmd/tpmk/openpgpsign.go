@@ -5,14 +5,17 @@ import (
 	"os"
 
 	"github.com/folbricht/tpmk"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
+	"golang.org/x/crypto/openpgp/packet"
 
 	"github.com/spf13/cobra"
 )
 
 type openpgpSignOptions struct {
 	armor    bool
+	pubArmor bool
 	device   string
 	password string
 }
@@ -21,16 +24,19 @@ func newOpenPGPSignCommand() *cobra.Command {
 	var opt openpgpSignOptions
 
 	cmd := &cobra.Command{
-		Use:   "sign <handle> <input> <signature>",
+		Use:   "sign <handle> <public> <input> <signature>",
 		Short: "Sign data with a TPM key",
 		Long: `Signs data using an existing private key in the TPM.
 The key must already be present and be an RSA key. Generates a
 detached signature for the <input> data. Input can either be a
 file or '-' to read the data from STDIN. Use '-' to write the
-signature to STDOUT.`,
-		Example: `  tpmk openpgp sign 0x81000000 input.txt input.sig
-  tpmk openpgp sign -a 0x81000000 - -`,
-		Args: cobra.ExactArgs(3),
+signature to STDOUT. While the public key can also be read from
+STDIN, it is not possible to read the input data from there at
+the same time.`,
+		Example: `  tpmk openpgp sign 0x81000000 pub.pgp input.txt input.sig
+  tpmk openpgp sign -a 0x81000000 pup.pgp - -
+  tpmk openpgp sign -a -m 0x81000000 - input.txt -`,
+		Args: cobra.ExactArgs(4),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runOpenPGPSign(opt, args)
 		},
@@ -38,10 +44,9 @@ signature to STDOUT.`,
 	}
 	flags := cmd.Flags()
 	flags.BoolVarP(&opt.armor, "armor", "a", false, "Create ASCII armored output")
+	flags.BoolVarP(&opt.pubArmor, "public-armor", "m", false, "Public key is armored")
 	flags.StringVarP(&opt.device, "device", "d", "/dev/tpmrm0", "TPM device, 'sim' for simulator")
 	flags.StringVarP(&opt.password, "password", "p", "", "Password for the TPM key")
-	_ = cmd.MarkFlagRequired("name")
-	_ = cmd.MarkFlagRequired("email")
 	return cmd
 }
 
@@ -50,8 +55,13 @@ func runOpenPGPSign(opt openpgpSignOptions, args []string) error {
 	if err != nil {
 		return err
 	}
-	input := args[1]
-	output := args[2]
+	pubkey := args[1]
+	input := args[2]
+	output := args[3]
+
+	if pubkey == "-" && input == "-" {
+		return errors.New("only the public key or the input can be read from stdin, not both")
+	}
 
 	// Open device or simulator
 	dev, err := tpmk.OpenDevice(opt.device)
@@ -62,6 +72,31 @@ func runOpenPGPSign(opt openpgpSignOptions, args []string) error {
 
 	// Open the TPM key
 	priv, err := tpmk.NewRSAPrivateKey(dev, handle, opt.password)
+	if err != nil {
+		return err
+	}
+
+	// Read the public key
+	var pubData io.Reader = os.Stdin
+	if pubkey != "-" {
+		f, err := os.Open(pubkey)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		pubData = f
+	}
+	if opt.pubArmor {
+		block, err := armor.Decode(pubData)
+		if err != nil {
+			return err
+		}
+		if block.Type != openpgp.PublicKeyType {
+			return errors.New("not a public key")
+		}
+		pubData = block.Body
+	}
+	entity, err := openpgp.ReadEntity(packet.NewReader(pubData))
 	if err != nil {
 		return err
 	}
@@ -98,5 +133,5 @@ func runOpenPGPSign(opt openpgpSignOptions, args []string) error {
 	}
 
 	// Generate and write the signature
-	return tpmk.OpenPGPDetachSign(w, priv, r, nil)
+	return tpmk.OpenPGPDetachSign(w, entity, r, nil, priv)
 }

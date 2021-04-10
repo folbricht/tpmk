@@ -54,7 +54,7 @@ func TestOpenPGPSign(t *testing.T) {
 	// Sign something with the TPM key
 	sig := new(bytes.Buffer)
 	msg := "signed message"
-	err = OpenPGPDetachSign(sig, priv, strings.NewReader(msg), config)
+	err = OpenPGPDetachSign(sig, entityPub, strings.NewReader(msg), config, priv)
 	require.NoError(t, err)
 
 	// Verify the signature

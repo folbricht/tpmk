@@ -88,11 +88,12 @@ func NewOpenPGPEntity(name, comment, email string, config *packet.Config, signer
 
 // OpenPGPDetachSign creates a detached signature for the data read from message using the provided signer.
 // The signature is written to w.
-func OpenPGPDetachSign(w io.Writer, signer crypto.Signer, message io.Reader, config *packet.Config) error {
+func OpenPGPDetachSign(w io.Writer, e *openpgp.Entity, message io.Reader, config *packet.Config, signer crypto.Signer) error {
 	// Only need the private key for signing, ignore the rest
-	// of the entity.
-	e := &openpgp.Entity{
-		PrivateKey: packet.NewSignerPrivateKey(config.Now(), signer),
+	// of the entity. Note that to get a consistent keyID, we
+	// have to use the timestamp from the original entity.
+	entity := &openpgp.Entity{
+		PrivateKey: packet.NewSignerPrivateKey(e.PrimaryKey.CreationTime, signer),
 	}
-	return openpgp.DetachSign(w, e, message, config)
+	return openpgp.DetachSign(w, entity, message, config)
 }
