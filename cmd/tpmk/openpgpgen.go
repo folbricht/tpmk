@@ -7,7 +7,6 @@ import (
 	"github.com/folbricht/tpmk"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/packet"
 
 	"github.com/spf13/cobra"
 )
@@ -25,13 +24,16 @@ func newOpenPGPGenCommand() *cobra.Command {
 	var opt openpgpGenOptions
 
 	cmd := &cobra.Command{
-		Use:   "generate <handle> <identityfile>",
-		Short: "Generate an identity",
-		Long: `Generate an OpenPGP identity using an existing private key in the TPM.
+		Use:   "generate <handle> <pubkeyfile>",
+		Short: "Generate an public key",
+		Long: `Generate an OpenPGP public key using an existing private key in the TPM.
+The key must already be present and be an RSA key. The generated public
+key will contain one identity which must be provided with -n and -e.
 
-Use '-' to write the output to STDOUT.`,
-		Example: `  tpmk openpgp generate -a -n Testing -e test@example.com 0x81000000 -`,
-		Args:    cobra.ExactArgs(2),
+Use '-' to write the public key to STDOUT.`,
+		Example: `  tpmk openpgp generate -n Testing -e test@example.com 0x81000000 pub.pgp
+  tpmk openpgp generate -a -n Testing -e test@example.com 0x81000000 -`,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runOpenPGPGen(opt, args)
 		},
@@ -69,11 +71,8 @@ func runOpenPGPGen(opt openpgpGenOptions, args []string) error {
 		return err
 	}
 
-	// TODO: Could allow users to provide encryption and/or compression options
-	var config *packet.Config
-
 	// Build an identity with the TPM key
-	entity, err := tpmk.NewOpenPGPEntity(opt.name, opt.comment, opt.email, config, priv)
+	entity, err := tpmk.NewOpenPGPEntity(opt.name, opt.comment, opt.email, nil, priv)
 	if err != nil {
 		return err
 	}
