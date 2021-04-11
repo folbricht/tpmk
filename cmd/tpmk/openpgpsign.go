@@ -14,10 +14,11 @@ import (
 )
 
 type openpgpSignOptions struct {
-	armor    bool
-	pubArmor bool
-	device   string
-	password string
+	armor       bool
+	pubArmor    bool
+	clearSigned bool
+	device      string
+	password    string
 }
 
 func newOpenPGPSignCommand() *cobra.Command {
@@ -28,13 +29,18 @@ func newOpenPGPSignCommand() *cobra.Command {
 		Short: "Sign data with a TPM key",
 		Long: `Signs data using an existing private key in the TPM.
 The key must already be present and be an RSA key. Generates a
-detached signature for the <input> data. Input can either be a
-file or '-' to read the data from STDIN. Use '-' to write the
-signature to STDOUT. While the public key can also be read from
-STDIN, it is not possible to read the input data from there at
+signature for the <input> data. Input can either be a file or '-' to
+read the data from STDIN. Use '-' to write the signature to STDOUT.
+
+By default a detached signature is produced. Use --clear-sign to
+generate a clear text signature instead.
+
+While the public key can also be read from STDIN, it is not possible
+to read the input data from there at
 the same time.`,
 		Example: `  tpmk openpgp sign 0x81000000 pub.pgp input.txt input.sig
   tpmk openpgp sign -a 0x81000000 pup.pgp - -
+  tpmk openpgp sign -c -m 0x81000000 public.gpg input.txt input.txt.asc
   tpmk openpgp sign -a -m 0x81000000 - input.txt -`,
 		Args: cobra.ExactArgs(4),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -45,6 +51,7 @@ the same time.`,
 	flags := cmd.Flags()
 	flags.BoolVarP(&opt.armor, "armor", "a", false, "Create ASCII armored output")
 	flags.BoolVarP(&opt.pubArmor, "public-armor", "m", false, "Public key is armored")
+	flags.BoolVarP(&opt.clearSigned, "clear-sign", "c", false, "Output a clear-text signature")
 	flags.StringVarP(&opt.device, "device", "d", "/dev/tpmrm0", "TPM device, 'sim' for simulator")
 	flags.StringVarP(&opt.password, "password", "p", "", "Password for the TPM key")
 	return cmd
@@ -61,6 +68,10 @@ func runOpenPGPSign(opt openpgpSignOptions, args []string) error {
 
 	if pubkey == "-" && input == "-" {
 		return errors.New("only the public key or the input can be read from stdin, not both")
+	}
+
+	if opt.clearSigned && opt.armor {
+		return errors.New("can't use --armor with --clear-sign, already armored")
 	}
 
 	// Open device or simulator
@@ -133,5 +144,8 @@ func runOpenPGPSign(opt openpgpSignOptions, args []string) error {
 	}
 
 	// Generate and write the signature
+	if opt.clearSigned {
+		return tpmk.OpenPGPClearSign(w, entity, r, nil, priv)
+	}
 	return tpmk.OpenPGPDetachSign(w, entity, r, nil, priv)
 }

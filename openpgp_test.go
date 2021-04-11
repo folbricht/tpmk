@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-tpm/tpm2"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/clearsign"
 	"golang.org/x/crypto/openpgp/packet"
 )
 
@@ -51,15 +52,24 @@ func TestOpenPGPSign(t *testing.T) {
 	entityPub, err := openpgp.ReadEntity(packet.NewReader(exported))
 	require.NoError(t, err)
 
-	// Sign something with the TPM key
-	sig := new(bytes.Buffer)
-	msg := "signed message"
-	err = OpenPGPDetachSign(sig, entityPub, strings.NewReader(msg), config, priv)
+	// Sign something with the TPM key producing a detached signature
+	sigDetached := new(bytes.Buffer)
+	msg := "signed message\n"
+	err = OpenPGPDetachSign(sigDetached, entityPub, strings.NewReader(msg), config, priv)
 	require.NoError(t, err)
 
 	// Verify the signature
 	keyring := openpgp.EntityList{entityPub}
-	signedBy, err := openpgp.CheckDetachedSignature(keyring, strings.NewReader(msg), sig)
+	signedBy, err := openpgp.CheckDetachedSignature(keyring, strings.NewReader(msg), sigDetached)
 	require.NoError(t, err)
 	require.Equal(t, entityPub, signedBy)
+
+	// Sign it with a clear text signature
+	sigClear := new(bytes.Buffer)
+	err = OpenPGPClearSign(sigClear, entityPub, strings.NewReader(msg), config, priv)
+	require.NoError(t, err)
+
+	block, rest := clearsign.Decode(sigClear.Bytes())
+	require.Empty(t, rest)
+	require.Equal(t, msg, string(block.Plaintext))
 }
