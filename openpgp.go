@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/clearsign"
 	"golang.org/x/crypto/openpgp/errors"
 	"golang.org/x/crypto/openpgp/packet"
 	"golang.org/x/crypto/openpgp/s2k"
@@ -96,4 +97,20 @@ func OpenPGPDetachSign(w io.Writer, e *openpgp.Entity, message io.Reader, config
 		PrivateKey: packet.NewSignerPrivateKey(e.PrimaryKey.CreationTime, signer),
 	}
 	return openpgp.DetachSign(w, entity, message, config)
+}
+
+// OpenPGPClearsign writes a copy of the original message in a signed, readable form to w.
+func OpenPGPClearsign(w io.Writer, e *openpgp.Entity, message io.Reader, config *packet.Config, signer crypto.Signer) error {
+	// Only need the private key for signing, ignore the rest
+	// of the entity. Note that to get a consistent keyID, we
+	// have to use the timestamp from the original entity.
+	privateKey := packet.NewSignerPrivateKey(e.PrimaryKey.CreationTime, signer)
+	privateKey.PubKeyAlgo = packet.PubKeyAlgoRSA
+	writer, err := clearsign.Encode(w, privateKey, config)
+	defer writer.Close()
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(writer, message)
+	return err
 }

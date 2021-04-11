@@ -16,6 +16,7 @@ import (
 type openpgpSignOptions struct {
 	armor    bool
 	pubArmor bool
+	clear    bool
 	device   string
 	password string
 }
@@ -45,6 +46,7 @@ the same time.`,
 	flags := cmd.Flags()
 	flags.BoolVarP(&opt.armor, "armor", "a", false, "Create ASCII armored output")
 	flags.BoolVarP(&opt.pubArmor, "public-armor", "m", false, "Public key is armored")
+	flags.BoolVarP(&opt.clear, "clear", "c", false, "Generate clearsigned output")
 	flags.StringVarP(&opt.device, "device", "d", "/dev/tpmrm0", "TPM device, 'sim' for simulator")
 	flags.StringVarP(&opt.password, "password", "p", "", "Password for the TPM key")
 	return cmd
@@ -133,5 +135,9 @@ func runOpenPGPSign(opt openpgpSignOptions, args []string) error {
 	}
 
 	// Generate and write the signature
-	return tpmk.OpenPGPDetachSign(w, entity, r, nil, priv)
+	if opt.clear {
+		return tpmk.OpenPGPClearsign(w, entity, r, nil, priv)
+	} else {
+		return tpmk.OpenPGPDetachSign(w, entity, r, nil, priv)
+	}
 }
