@@ -99,6 +99,7 @@ func OpenPGPDetachSign(w io.Writer, e *openpgp.Entity, message io.Reader, config
 	return openpgp.DetachSign(w, entity, message, config)
 }
 
+// OpenPGPClearSign writes a copy of the original message in a signed, readable form to w.
 func OpenPGPClearSign(w io.Writer, e *openpgp.Entity, message io.Reader, config *packet.Config, signer crypto.Signer) error {
 	// Only need the private key for signing, but to get a consistent keyID, we
 	// have to use the timestamp from the original entity.

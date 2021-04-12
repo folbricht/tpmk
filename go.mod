@@ -1,6 +1,6 @@
 module github.com/folbricht/tpmk
 
-go 1.11
+go 1.15
 
 require (
 	github.com/folbricht/sshtest v0.1.0
