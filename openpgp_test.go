@@ -3,6 +3,7 @@ package tpmk
 import (
 	"bytes"
 	"crypto"
+	"io"
 	"strings"
 	"testing"
 
@@ -49,24 +50,28 @@ func TestOpenPGPSign(t *testing.T) {
 	err = entity.Serialize(exported)
 	require.NoError(t, err)
 
-	entityPub, err := openpgp.ReadEntity(packet.NewReader(exported))
+	entityRead, err := ReadOpenPGPEntity(packet.NewReader(exported), priv)
 	require.NoError(t, err)
 
 	// Sign something with the TPM key producing a detached signature
 	sigDetached := new(bytes.Buffer)
 	msg := "signed message\n"
-	err = OpenPGPDetachSign(sigDetached, entityPub, strings.NewReader(msg), config, priv)
+	err = openpgp.DetachSign(sigDetached, entityRead, strings.NewReader(msg), config)
 	require.NoError(t, err)
 
 	// Verify the signature
-	keyring := openpgp.EntityList{entityPub}
+	keyring := openpgp.EntityList{entityRead}
 	signedBy, err := openpgp.CheckDetachedSignature(keyring, strings.NewReader(msg), sigDetached)
 	require.NoError(t, err)
-	require.Equal(t, entityPub, signedBy)
+	require.Equal(t, entityRead, signedBy)
 
 	// Sign it with a clear text signature
 	sigClear := new(bytes.Buffer)
-	err = OpenPGPClearSign(sigClear, entityPub, strings.NewReader(msg), config, priv)
+	wc, err := clearsign.Encode(sigClear, entityRead.PrivateKey, config)
+	require.NoError(t, err)
+	_, err = io.Copy(wc, strings.NewReader(msg))
+	require.NoError(t, err)
+	err = wc.Close()
 	require.NoError(t, err)
 
 	block, rest := clearsign.Decode(sigClear.Bytes())

@@ -4,10 +4,8 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"fmt"
-	"io"
 
 	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/clearsign"
 	"golang.org/x/crypto/openpgp/errors"
 	"golang.org/x/crypto/openpgp/packet"
 	"golang.org/x/crypto/openpgp/s2k"
@@ -87,28 +85,24 @@ func NewOpenPGPEntity(name, comment, email string, config *packet.Config, signer
 	return e, err
 }
 
-// OpenPGPDetachSign creates a detached signature for the data read from message using the provided signer.
-// The signature is written to w.
-func OpenPGPDetachSign(w io.Writer, e *openpgp.Entity, message io.Reader, config *packet.Config, signer crypto.Signer) error {
-	// Only need the private key for signing, ignore the rest
-	// of the entity. Note that to get a consistent keyID, we
-	// have to use the timestamp from the original entity.
-	entity := &openpgp.Entity{
-		PrivateKey: packet.NewSignerPrivateKey(e.PrimaryKey.CreationTime, signer),
-	}
-	return openpgp.DetachSign(w, entity, message, config)
-}
-
-// OpenPGPClearSign writes a copy of the original message in a signed, readable form to w.
-func OpenPGPClearSign(w io.Writer, e *openpgp.Entity, message io.Reader, config *packet.Config, signer crypto.Signer) error {
-	// Only need the private key for signing, but to get a consistent keyID, we
-	// have to use the timestamp from the original entity.
-	privateKey := packet.NewSignerPrivateKey(e.PrimaryKey.CreationTime, signer)
-	wc, err := clearsign.Encode(w, privateKey, config)
+// ReadOpenPGPEntity reads a public key and returns an openpgp.Entity with the provided crypto.Signer.
+// The returned entity can be used for signing. The private key must match the primary public key.
+func ReadOpenPGPEntity(packets *packet.Reader, signer crypto.Signer) (*openpgp.Entity, error) {
+	e, err := openpgp.ReadEntity(packets)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer wc.Close()
-	_, err = io.Copy(wc, message)
-	return err
+	privateKey := packet.NewSignerPrivateKey(e.PrimaryKey.CreationTime, signer)
+
+	if privateKey.KeyId != e.PrimaryKey.KeyId {
+		return nil, fmt.Errorf("id of private key %q does not match public key %q", privateKey.KeyIdString(), e.PrimaryKey.KeyIdString())
+	}
+	e.PrivateKey = privateKey
+	for i := range e.Subkeys {
+		if e.Subkeys[i].PublicKey.KeyId == privateKey.KeyId {
+			e.Subkeys[i].PrivateKey = privateKey
+			e.Subkeys[i].PrivateKey.IsSubkey = true
+		}
+	}
+	return e, nil
 }

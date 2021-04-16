@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
+	"golang.org/x/crypto/openpgp/clearsign"
 	"golang.org/x/crypto/openpgp/packet"
 
 	"github.com/spf13/cobra"
@@ -107,7 +108,7 @@ func runOpenPGPSign(opt openpgpSignOptions, args []string) error {
 		}
 		pubData = block.Body
 	}
-	entity, err := openpgp.ReadEntity(packet.NewReader(pubData))
+	entity, err := tpmk.ReadOpenPGPEntity(packet.NewReader(pubData), priv)
 	if err != nil {
 		return err
 	}
@@ -145,7 +146,13 @@ func runOpenPGPSign(opt openpgpSignOptions, args []string) error {
 
 	// Generate and write the signature
 	if opt.clearSigned {
-		return tpmk.OpenPGPClearSign(w, entity, r, nil, priv)
+		wc, err := clearsign.Encode(w, entity.PrivateKey, nil)
+		if err != nil {
+			return err
+		}
+		defer wc.Close()
+		_, err = io.Copy(wc, r)
+		return err
 	}
-	return tpmk.OpenPGPDetachSign(w, entity, r, nil, priv)
+	return openpgp.DetachSign(w, entity, r, nil)
 }
