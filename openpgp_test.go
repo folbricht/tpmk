@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto"
 	"io"
+	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -77,4 +78,54 @@ func TestOpenPGPSign(t *testing.T) {
 	block, rest := clearsign.Decode(sigClear.Bytes())
 	require.Empty(t, rest)
 	require.Equal(t, msg, string(block.Plaintext))
+}
+
+func TestOpenPGPDecrypt(t *testing.T) {
+	dev, err := simulator.Get()
+	require.NoError(t, err)
+	defer dev.Close()
+
+	const (
+		handle = 0x81000000
+		pw     = ""
+		attr   = tpm2.FlagSign | tpm2.FlagDecrypt | tpm2.FlagUserWithAuth | tpm2.FlagSensitiveDataOrigin
+	)
+
+	// Generate and use the key in the TPM for signing
+	_, err = GenRSAPrimaryKey(dev, handle, pw, pw, attr)
+	require.NoError(t, err)
+	priv, err := NewRSAPrivateKey(dev, handle, pw)
+	require.NoError(t, err)
+
+	// Build an identity with the TPM key
+	config := &packet.Config{
+		DefaultHash:            crypto.SHA256,
+		DefaultCipher:          packet.CipherAES256,
+		DefaultCompressionAlgo: packet.CompressionZLIB,
+		CompressionConfig: &packet.CompressionConfig{
+			Level: 9,
+		},
+		RSABits: 2048,
+	}
+	entity, err := NewOpenPGPEntity("test", "comment", "test@example.com", config, priv)
+	require.NoError(t, err)
+
+	// Encrypt something for the TPM entity
+	msg := []byte("secret message")
+	ciphertext := new(bytes.Buffer)
+	wc, err := openpgp.Encrypt(ciphertext, []*openpgp.Entity{entity}, nil, nil, config)
+	require.NoError(t, err)
+	_, err = wc.Write(msg)
+	require.NoError(t, err)
+	err = wc.Close()
+	require.NoError(t, err)
+
+	// Decrypt the message
+	md, err := openpgp.ReadMessage(ciphertext, openpgp.EntityList([]*openpgp.Entity{entity}), nil, config)
+	require.NoError(t, err)
+	decrypted, err := ioutil.ReadAll(md.UnverifiedBody)
+	require.NoError(t, err)
+	require.True(t, md.IsEncrypted)
+	require.Equal(t, entity, md.DecryptedWith.Entity)
+	require.Equal(t, msg, decrypted)
 }

@@ -86,7 +86,8 @@ func NewOpenPGPEntity(name, comment, email string, config *packet.Config, signer
 }
 
 // ReadOpenPGPEntity reads a public key and returns an openpgp.Entity with the provided crypto.Signer.
-// The returned entity can be used for signing. The private key must match the primary public key.
+// The returned entity can be used for signing or decryption. The private key must match the primary
+// public key.
 func ReadOpenPGPEntity(packets *packet.Reader, signer crypto.Signer) (*openpgp.Entity, error) {
 	e, err := openpgp.ReadEntity(packets)
 	if err != nil {
