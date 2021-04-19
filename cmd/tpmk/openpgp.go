@@ -13,6 +13,7 @@ func newOpenPGPCommand() *cobra.Command {
 	cmd.AddCommand(
 		newOpenPGPGenCommand(),
 		newOpenPGPSignCommand(),
+		newOpenPGPDecryptCommand(),
 	)
 	return cmd
 }
