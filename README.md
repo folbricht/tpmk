@@ -2,12 +2,14 @@
 
 [![GoDoc](https://godoc.org/github.com/folbricht/tpmk?status.svg)](https://godoc.org/github.com/folbricht/tpmk)
 
-This toolkit strives to simplify common tasks around key and certificates involving TPM2. It also provides the tools necessary to make use of keys in the module for TLS connections in Go. It does not attempt to provide a feature-rich interface to support all possible use-cases and features. tpmk consists of a Go library and a tool with a simple interface. It currently provides:
+This toolkit strives to simplify common tasks around key and certificates involving TPM2. It also provides the tools necessary to make use of keys in the module for TLS connections and OpenPGP in Go. It does not attempt to provide a feature-rich interface to support all possible use-cases and features. tpmk consists of a Go library and a tool with a simple interface. It currently provides:
 
 - Generating RSA/SHA256 primary keys in the TPM and exporting the public key
 - Generating x509 certificates and signing with a (file) CA
-- Writing of arbirary data to NV storage - intended to be used to store certificates
+- Writing of arbitrary data to NV storage - intended to be used to store certificates
 - Creating SSH certificates for keys in the TPM
+- Generating OpenPGP public keys based on RSA keys in the TPM
+- OpenPGP Signing and Decryption
 
 A range of features and options are **not** available at this point, but may be implemented in the future. Suggestions and contributions are welcome.
 
@@ -51,6 +53,12 @@ go get -u github.com/folbricht/tpmk/cmd/tpmk
   - `certificate` Create and sign an SSH certificate
   - `pub` Convert a PKCS1 key to OpenSSH format
   - `client` Start SSH client and execute remote command
+
+- `openpgp` Commands to use keys in OpenPGP format
+
+  - `generate` Create an OpenPGP identity based on a key in the TPM
+  - `sign` Sign data with a TPM key
+  - `decrypt` Decrypt data using the private TPM key
 
 ## Use-cases / Examples
 
@@ -240,6 +248,22 @@ if err != nil {
   panic(err)
 }
 fmt.Println(string(b))
+```
+
+### Create an OpenPGP identity and sign data with it
+
+This example shows how to produce an OpenPGP public key (identity) and use it to sign data.
+
+In order to sign with a TPM key, an OpenPGP identity needs to be created with name and email address. This identity contains the public key and should be stored (either separately or in a TPM NV index). For this command, the key (handle 0x81000000 in this example) has to be present in the TPM already and must have the `sign` attribute to allow signing.
+
+```sh
+tpmk openpgp generate -n Testing -e test@example.com 0x81000000 identity.pgp
+```
+
+The same key and identity should be used when signing data. In this case a detached and armored signature is created and written to STDOUT.
+
+```sh
+tpmk openpgp sign -a 0x81000000 identity.pgp data.txt -
 ```
 
 ## Links

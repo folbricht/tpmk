@@ -14,6 +14,7 @@ func main() {
 		newKeyCommand(),
 		newx509Command(),
 		newSSHCommand(),
+		newOpenPGPCommand(),
 	)
 	rootCmd.SetOutput(os.Stderr)
 
