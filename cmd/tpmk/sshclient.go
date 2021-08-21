@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
+	"golang.org/x/net/proxy"
 )
 
 type sshClientOptions struct {
@@ -23,6 +24,7 @@ type sshClientOptions struct {
 	crtHandle      string
 	knownHostsFile string
 	insecure       bool
+	proxySocks5    string
 }
 
 func newSSHClientCommand() *cobra.Command {
@@ -63,6 +65,7 @@ need to be speficied in the command in the typical format:
 	flags.StringVarP(&opt.crtPassword, "crt-password", "n", "", "TPM NV index password")
 	flags.StringVarP(&opt.crtFormat, "crt-format", "f", "openssh", "Format of the client cert")
 	flags.BoolVarP(&opt.insecure, "insecure", "k", false, "Accept any host key")
+	flags.StringVarP(&opt.proxySocks5, "socks5-proxy", "P", "", "Socks5 proxy string")
 	return cmd
 }
 
@@ -194,12 +197,31 @@ func runSSHClient(opt sshClientOptions, args []string) error {
 		HostKeyCallback: hostKeyCallback,
 	}
 
-	// Connect to the SSH server and start a session
-	client, err := ssh.Dial("tcp", host, config)
-	if err != nil {
-		return errors.Wrap(err, "connecting to "+host)
+	var client *ssh.Client
+	if opt.proxySocks5 != "" {
+		socksConnection, err := proxy.SOCKS5("tcp", opt.proxySocks5, nil, proxy.Direct)
+		if err != nil {
+			return errors.Wrap(err, "could not create socks5 proxy "+opt.proxySocks5)
+		}
+		conn, err := socksConnection.Dial("tcp", host)
+		if err != nil {
+			return errors.Wrap(err, "could not create connection with socks.")
+		}
+		defer conn.Close()
+		clientConnection, chans, reqs, err := ssh.NewClientConn(conn, host, config)
+		if err != nil {
+			return errors.Wrap(err, "could not create socks5 proxy client "+opt.proxySocks5)
+		}
+		client = ssh.NewClient(clientConnection, chans, reqs)
+		defer client.Close()
+	} else {
+		client, err = ssh.Dial("tcp", host, config)
+		if err != nil {
+			return errors.Wrap(err, "connecting to "+host)
+		}
+		defer client.Close()
 	}
-	defer client.Close()
+	
 	session, err := client.NewSession()
 	if err != nil {
 		return errors.Wrap(err, "creating SSH session")
