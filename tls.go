@@ -86,7 +86,7 @@ func (k RSAPrivateKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpt
 		Alg:  alg,
 		Hash: hash,
 	}
-	sig, err := tpm2.Sign(k.dev, k.handle, k.password, digest, scheme)
+	sig, err := tpm2.Sign(k.dev, k.handle, k.password, digest, nil, scheme)
 	if err != nil {
 		return nil, err
 	}
