@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
 
 	"github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
@@ -27,7 +26,6 @@ func GenRSAPrimaryKey(dev io.ReadWriteCloser, handle tpmutil.Handle, parentPW, o
 				Hash: tpm2.AlgNull,
 			},
 			KeyBits: uint16(2048),
-			Modulus: big.NewInt(0),
 		},
 	}
 
@@ -61,9 +59,9 @@ func LoadExternal(dev io.ReadWriteCloser, handle tpmutil.Handle, pk crypto.Priva
 					Alg:  tpm2.AlgNull,
 					Hash: tpm2.AlgNull,
 				},
-				KeyBits:  uint16(private.Size() * 8),
-				Exponent: uint32(private.PublicKey.E),
-				Modulus:  private.PublicKey.N,
+				KeyBits:     uint16(private.Size() * 8),
+				ExponentRaw: uint32(private.PublicKey.E),
+				ModulusRaw:  private.PublicKey.N.Bytes(),
 			},
 		}
 		tpm2Priv = tpm2.Private{
@@ -84,7 +82,7 @@ func LoadExternal(dev io.ReadWriteCloser, handle tpmutil.Handle, pk crypto.Priva
 					Hash: tpm2.AlgSHA1,
 				},
 				CurveID: tpm2.CurveNISTP256,
-				Point:   tpm2.ECPoint{X: private.PublicKey.X, Y: private.PublicKey.Y},
+				Point:   tpm2.ECPoint{XRaw: private.PublicKey.X.Bytes(), YRaw: private.PublicKey.Y.Bytes()},
 			},
 		}
 		tpm2Priv = tpm2.Private{
