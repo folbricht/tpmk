@@ -22,7 +22,7 @@ func OpenDevice(device string) (io.ReadWriteCloser, error) {
 		}
 		return OpenSim()
 	default:
-		return tpm2.OpenTPM(device)
+		return openImpl(device)
 	}
 }
 
