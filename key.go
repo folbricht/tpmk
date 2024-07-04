@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/google/go-tpm/tpm2"
+	"github.com/google/go-tpm/legacy/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
 
@@ -42,7 +42,7 @@ func GenRSAPrimaryKey(dev io.ReadWriteCloser, handle tpmutil.Handle, parentPW, o
 }
 
 // LoadExternal loads an existing key-pair into the TPM and returns the key handle. The key is loaded
-/// into the Null hierarchy and not persistent.
+// / into the Null hierarchy and not persistent.
 func LoadExternal(dev io.ReadWriteCloser, handle tpmutil.Handle, pk crypto.PrivateKey, password string, attr tpm2.KeyProp) (tpmutil.Handle, error) {
 	var (
 		tpm2Pub  tpm2.Public
