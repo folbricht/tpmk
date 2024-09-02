@@ -6,7 +6,7 @@ package tpmk
 import (
 	"io"
 
-	"github.com/google/go-tpm/tpm2"
+	"github.com/google/go-tpm/legacy/tpm2"
 )
 
 // openImpl opens the TPM identified by the device name
