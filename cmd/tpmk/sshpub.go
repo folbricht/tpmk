@@ -66,7 +66,7 @@ func runSSHPub(opt sshPubOptions, args []string) error {
 		return errors.Wrap(err, "read public key")
 	}
 
-	// Write the certificate to file or STDOUT
+	// Write the public key to file or STDOUT
 	b := tpmk.MarshalOpenSSHPublic(sshPublic, "")
 	if outKeyfile == "-" {
 		_, err = os.Stdout.Write(b)

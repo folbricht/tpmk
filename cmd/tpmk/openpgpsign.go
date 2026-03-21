@@ -37,10 +37,9 @@ By default a detached signature is produced. Use --clear-sign to
 generate a clear text signature instead.
 
 While the public key can also be read from STDIN, it is not possible
-to read the input data from there at
-the same time.`,
+to read the input data from there at the same time.`,
 		Example: `  tpmk openpgp sign 0x81000000 pub.pgp input.txt input.sig
-  tpmk openpgp sign -a 0x81000000 pup.pgp - -
+  tpmk openpgp sign -a 0x81000000 pub.pgp - -
   tpmk openpgp sign -c -m 0x81000000 public.gpg input.txt input.txt.asc
   tpmk openpgp sign -a -m 0x81000000 - input.txt -`,
 		Args: cobra.ExactArgs(4),

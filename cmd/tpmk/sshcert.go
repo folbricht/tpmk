@@ -33,7 +33,7 @@ func newSSHCertCommand() *cobra.Command {
 		Long: `Generate an SSH certificate using the provided public key and
 sign it with a CA key.
 
-The certificat format can be 'openssh' or 'wire' which is smaller
+The certificate format can be 'openssh' or 'wire' which is smaller
 and more suitable for storage in NV indexes.
 
 Use '-' to read the key from STDIN, or to output the certificate 

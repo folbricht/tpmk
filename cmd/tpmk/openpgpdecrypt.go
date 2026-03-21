@@ -40,7 +40,7 @@ to determine if decryption was successful.
 While the public key can also be read from STDIN, it is not possible
 to read the input data from there at the same time.`,
 		Example: `  tpmk openpgp decrypt 0x81000000 pub.pgp encrypted.pgp decrypted.txt
-  tpmk openpgp decrypt -a 0x81000000 pup.pgp - -
+  tpmk openpgp decrypt -a 0x81000000 pub.pgp - -
   tpmk openpgp decrypt -a -m 0x81000000 - secret.txt.pgp -`,
 		Args: cobra.ExactArgs(4),
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -17,9 +17,7 @@ func newNVRmCommand() *cobra.Command {
 		Use:   "rm <index>",
 		Short: "Delete an NV index",
 		Long: `Delete data in an NV index and make the index available
-again.
-
-Use '-' to print the data to STDOUT.`,
+again.`,
 		Example: `  tpmk nv rm 0x1500000`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -39,7 +39,7 @@ func parseOptionsMap(opt []string) map[string]string {
 }
 
 // Parses a string of key properties as specified in the command line and returns
-// the propery value. For example "sign|fixedtpm|fixedparent" becomes
+// the property value. For example "sign|fixedtpm|fixedparent" becomes
 // tpm2.FlagSign | tpm2.FlagFixedTPM | tpm2.FlagFixedParent.
 func parseKeyAttributes(s string) (tpm2.KeyProp, error) {
 	var keyProp tpm2.KeyProp
@@ -56,7 +56,7 @@ func parseKeyAttributes(s string) (tpm2.KeyProp, error) {
 }
 
 // Parses a string of NV properties as specified in the command line and returns
-// the propery value. For example "ownerwrite|ownerread|authread|ppread" becomes
+// the property value. For example "ownerwrite|ownerread|authread|ppread" becomes
 // tpm2.AttrOwnerWrite | tpm2.AttrOwnerRead | tpm2.AttrAuthRead | tpm2.AttrPPRead.
 func parseNVAttributes(s string) (tpm2.NVAttr, error) {
 	var nvAttr tpm2.NVAttr

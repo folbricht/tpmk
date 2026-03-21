@@ -1,6 +1,7 @@
-# tmpk - TPM2 key and storage management toolkit
+# tpmk - TPM2 key and storage management toolkit
 
-[![GoDoc](https://godoc.org/github.com/folbricht/tpmk?status.svg)](https://godoc.org/github.com/folbricht/tpmk)
+[![Go Reference](https://pkg.go.dev/badge/github.com/folbricht/tpmk.svg)](https://pkg.go.dev/github.com/folbricht/tpmk)
+[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 This toolkit strives to simplify common tasks around key and certificates involving TPM2. It also provides the tools necessary to make use of keys in the module for TLS connections and OpenPGP in Go. It does not attempt to provide a feature-rich interface to support all possible use-cases and features. tpmk consists of a Go library and a tool with a simple interface. It currently provides:
 
@@ -64,7 +65,7 @@ go get -u github.com/folbricht/tpmk/cmd/tpmk
 
 ### RSA key generation and certificate storage in NV
 
-In this example, the goal is to have an RSA key generated in the TPM, and have a signed certificate for the key stored in NV in the TPM. This allows a machine to retain a signed key+certificate without relying on disk storage. While the generated keys doesn't leave the module, the CA to sign it is expected to be available as files at time of signing.
+In this example, the goal is to have an RSA key generated in the TPM, and have a signed certificate for the key stored in NV in the TPM. This allows a machine to retain a signed key+certificate without relying on disk storage. While the generated key doesn't leave the module, the CA to sign it is expected to be available as files at time of signing.
 
 Generate the key in the TPM and write the public key (in PEM format) to disk.
 
@@ -92,7 +93,7 @@ tpmk key generate 0x81000000 - | tpmk x509 generate -c ca.crt -k ca.key --out-fo
 
 ### Establishing a mutual TLS connection using a TPM key
 
-Here the goal is to use a key from the TPM to establish a mutual TLS connection with a server. The key is assumed to have been generated already (see prior example). While not strictly neccessary, the signed x509 is kept in NV as well.
+Here the goal is to use a key from the TPM to establish a mutual TLS connection with a server. The key is assumed to have been generated already (see prior example). While not strictly necessary, the signed x509 is kept in NV as well.
 
 Start off with some setup. Defining the handle/index that hold the key and certificate and open the TPM.
 
