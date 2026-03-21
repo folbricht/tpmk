@@ -41,10 +41,7 @@ func NVWrite(dev io.ReadWriteCloser, index tpmutil.Handle, b []byte, password st
 	// Can only write maxBuffer bytes at a time so need to batch up the writes until everything is written
 	var offset uint16
 	for len(b) > 0 {
-		length := len(b)
-		if length > maxBuffer {
-			length = maxBuffer
-		}
+		length := min(len(b), maxBuffer)
 		if err := tpm2.NVWrite(dev, tpm2.HandleOwner, tpmutil.Handle(index), password, b[:length], offset); err != nil {
 			return err
 		}
