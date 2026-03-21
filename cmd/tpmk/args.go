@@ -44,7 +44,7 @@ func parseOptionsMap(opt []string) map[string]string {
 func parseKeyAttributes(s string) (tpm2.KeyProp, error) {
 	var keyProp tpm2.KeyProp
 	s = strings.Replace(s, " ", "", -1)
-	for _, prop := range strings.Split(s, "|") {
+	for prop := range strings.SplitSeq(s, "|") {
 		v, ok := stringToKeyAttribute[prop]
 		if !ok {
 			return keyProp, fmt.Errorf("unknown attribute property '%s'", prop)
@@ -61,7 +61,7 @@ func parseKeyAttributes(s string) (tpm2.KeyProp, error) {
 func parseNVAttributes(s string) (tpm2.NVAttr, error) {
 	var nvAttr tpm2.NVAttr
 	s = strings.Replace(s, " ", "", -1)
-	for _, prop := range strings.Split(s, "|") {
+	for prop := range strings.SplitSeq(s, "|") {
 		v, ok := stringToNVAttribute[prop]
 		if !ok {
 			return nvAttr, fmt.Errorf("unknown attribute '%s'", prop)
