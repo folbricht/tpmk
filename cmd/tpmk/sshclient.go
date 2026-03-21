@@ -38,13 +38,13 @@ and reads/writes to it via STDIN/STDOUT. Supports host and
 client certificates, with the client certificate optionally
 read from an NV index in the TPM as well.
 
-Unless -k is used, a know hosts file in OpenSSH format needs
+Unless -k is used, a known hosts file in OpenSSH format needs
 to be provided with --known-hosts/-s. If none is given in the
 command line, $HOME/.ssh/known_hosts will be used if available
 followed by /etc/ssh/ssh_known_hosts.
 
 Note that no assumptions are made regarding user or port. Both
-need to be speficied in the command in the typical format:
+need to be specified in the command in the typical format:
 <user>@<host>:<port>
 `,
 		Example: `  tpmk ssh client 0x81000000 root@host:22 "ls -l"
@@ -110,7 +110,7 @@ func runSSHClient(opt sshClientOptions, args []string) error {
 		return errors.Wrap(err, "invalid key")
 	}
 
-	// Use client certificate, if provided to extend the ssh.Signer with a cerfificate
+	// Use client certificate, if provided to extend the ssh.Signer with a certificate
 	if opt.crtFile != "" || opt.crtHandle != "" {
 		var b []byte
 		var err error
@@ -130,7 +130,7 @@ func runSSHClient(opt sshClientOptions, args []string) error {
 			}
 		}
 
-		// Unmarshall the certificate according to the provided format
+		// Unmarshal the certificate according to the provided format
 		var pub ssh.PublicKey
 		switch opt.crtFormat {
 		case "openssh":
@@ -158,7 +158,7 @@ func runSSHClient(opt sshClientOptions, args []string) error {
 	}
 
 	// Find a known_hosts file with valid host keys or certificates. Use the following search order:
-	// 1. Proviced by command line options
+	// 1. Provided by command line options
 	// 2. Disabled via command line (-k)
 	// 3. $HOME/.ssh/known_hosts if $HOME is non-empty
 	// 4. /etc/ssh/ssh_known_hosts

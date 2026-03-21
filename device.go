@@ -9,7 +9,7 @@ import (
 
 // SimDev is used for testing. When set, calling OpenDevice("sim") will return it instead
 // of trying to connect to a simulator. Used in command tests that first setup an internal
-// simltor, set SimDev, then call the command with "sim" as device name.
+// simulator, set SimDev, then call the command with "sim" as device name.
 var SimDev io.ReadWriteCloser
 
 // OpenDevice opens a TPM2. If device is 'sim', it'll connect to a simulator on localhost:2321.
@@ -42,7 +42,7 @@ func (s Simulator) Close() error {
 	return s.Conn.Close()
 }
 
-// OpenSim opens a connection to a local TPM2 simulator via TCP and initalizes it by calling Startup.
+// OpenSim opens a connection to a local TPM2 simulator via TCP and initializes it by calling Startup.
 func OpenSim() (Simulator, error) {
 	dev, err := mssim.Open(mssim.Config{CommandAddress: "localhost:2321", PlatformAddress: "localhost:2322"})
 	if err != nil {

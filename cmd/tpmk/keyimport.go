@@ -17,7 +17,7 @@ func newKeyImportCommand() *cobra.Command {
 		Use:   "import <handle> <private-key>",
 		Short: "Import an existing key",
 		Long: `Import a key into the TPM. The key should be
-in PEM-encode PKCS#1 format.
+in PEM-encoded PKCS#1 format.
 
 Use '-' to read the key from STDIN.`,
 		Example: `  tpmk key import 0x81000000 private.pem`,

@@ -25,7 +25,7 @@ func newOpenPGPGenCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "generate <handle> <pubkeyfile>",
-		Short: "Generate an public key",
+		Short: "Generate a public key",
 		Long: `Generate an OpenPGP public key using an existing private key in the TPM.
 The key must already be present and be an RSA key. The generated public
 key will contain one identity which must be provided with -n and -e.

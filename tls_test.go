@@ -225,7 +225,7 @@ func TestDecrypt(t *testing.T) {
 			case *rsa.OAEPOptions:
 				// The TPM only uses null-terminated labels, and those are included in the calculations.
 				// We need to do the same for the results to match, even though the null isn't really
-				// needed in the Go library for the same caluclations.
+				// needed in the Go library for the same calculations.
 				label := opts.Label
 				if len(label) > 0 {
 					label = append(label, 0)
