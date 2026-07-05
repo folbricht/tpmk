@@ -32,7 +32,7 @@ func NVWrite(dev io.ReadWriteCloser, index tpmutil.Handle, b []byte, password st
 		password,
 		password,
 		nil,
-		tpm2.AttrOwnerWrite|tpm2.AttrOwnerRead|tpm2.AttrAuthRead|tpm2.AttrPPRead,
+		attr,
 		uint16(len(b)),
 	); err != nil {
 		return err
