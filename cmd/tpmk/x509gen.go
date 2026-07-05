@@ -94,10 +94,11 @@ func runx509Gen(opt x509GenOptions, args []string) error {
 
 	// Build the x509 cert template
 	template := x509.Certificate{
-		NotBefore:    time.Now(),
-		NotAfter:     expiry,
-		KeyUsage:     x509.KeyUsageCertSign | x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		SerialNumber: big.NewInt(opt.serial),
+		NotBefore:             time.Now(),
+		NotAfter:              expiry,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		SerialNumber:          big.NewInt(opt.serial),
+		BasicConstraintsValid: true,
 	}
 	if opt.commonName != "" {
 		template.Subject = pkix.Name{CommonName: opt.commonName}
@@ -137,5 +138,5 @@ func runx509Gen(opt x509GenOptions, args []string) error {
 		_, err = os.Stdout.Write(b)
 		return err
 	}
-	return ioutil.WriteFile(crtfile, b, 0755)
+	return ioutil.WriteFile(crtfile, b, 0644)
 }

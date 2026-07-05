@@ -26,7 +26,7 @@ func GetHandles(dev io.ReadWriteCloser, start tpm2.TPMProp) ([]tpmutil.Handle, e
 			}
 			handles = append(handles, h)
 		}
-		if !more {
+		if !more || len(cap) == 0 {
 			break
 		}
 		pos = uint32(cap[len(cap)-1].(tpmutil.Handle)) + 1

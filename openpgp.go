@@ -101,8 +101,12 @@ func ReadOpenPGPEntity(packets *packet.Reader, signer crypto.Signer) (*openpgp.E
 	e.PrivateKey = privateKey
 	for i := range e.Subkeys {
 		if e.Subkeys[i].PublicKey.KeyId == privateKey.KeyId {
-			e.Subkeys[i].PrivateKey = privateKey
-			e.Subkeys[i].PrivateKey.IsSubkey = true
+			// Build a separate private key for the subkey rather than reusing the
+			// primary's. Setting IsSubkey on a shared instance would mark the
+			// primary private key as a subkey as well.
+			subPrivateKey := packet.NewSignerPrivateKey(e.Subkeys[i].PublicKey.CreationTime, signer)
+			subPrivateKey.IsSubkey = true
+			e.Subkeys[i].PrivateKey = subPrivateKey
 		}
 	}
 	return e, nil

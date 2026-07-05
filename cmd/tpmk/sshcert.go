@@ -137,5 +137,5 @@ func runSSHCert(opt sshCertOptions, args []string) error {
 		_, err = os.Stdout.Write(b)
 		return err
 	}
-	return ioutil.WriteFile(crtfile, b, 0755)
+	return ioutil.WriteFile(crtfile, b, 0644)
 }

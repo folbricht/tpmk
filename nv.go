@@ -2,7 +2,9 @@ package tpmk
 
 import (
 	"errors"
+	"fmt"
 	"io"
+	"math"
 
 	"github.com/google/go-tpm/legacy/tpm2"
 	"github.com/google/go-tpm/tpmutil"
@@ -11,6 +13,11 @@ import (
 // NVWrite reserves space in an NV index and writes to it starting at offset 0. It automatically
 // determines the max buffer size prior to writing blocks to the index.
 func NVWrite(dev io.ReadWriteCloser, index tpmutil.Handle, b []byte, password string, attr tpm2.NVAttr) error {
+	// The size of an NV index is a uint16, reject anything larger before it wraps around
+	if len(b) > math.MaxUint16 {
+		return fmt.Errorf("data too large for NV index: %d bytes, max %d", len(b), math.MaxUint16)
+	}
+
 	// Determine MAX_NV_BUFFER_SIZE from the TPM capabilities. Needed to batch writes to NV storage.
 	cap, _, err := tpm2.GetCapability(dev, tpm2.CapabilityTPMProperties, 1, uint32(tpm2.NVMaxBufferSize))
 	if err != nil {
