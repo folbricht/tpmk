@@ -1,5 +1,6 @@
 # tpmk - TPM2 key and storage management toolkit
 
+[![Build](https://github.com/folbricht/tpmk/actions/workflows/build.yml/badge.svg)](https://github.com/folbricht/tpmk/actions/workflows/build.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/folbricht/tpmk.svg)](https://pkg.go.dev/github.com/folbricht/tpmk)
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
