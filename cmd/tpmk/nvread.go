@@ -61,5 +61,5 @@ func runNVRead(opt nvReadOptions, args []string) error {
 		_, err = os.Stdout.Write(b)
 		return err
 	}
-	return ioutil.WriteFile(output, b, 0755)
+	return ioutil.WriteFile(output, b, 0644)
 }

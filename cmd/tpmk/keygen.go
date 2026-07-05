@@ -89,5 +89,5 @@ func runKeyGen(opt keygenOptions, args []string) error {
 		_, err = os.Stdout.Write(pem)
 		return err
 	}
-	return ioutil.WriteFile(output, pem, 0755)
+	return ioutil.WriteFile(output, pem, 0644)
 }
