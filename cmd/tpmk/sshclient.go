@@ -119,7 +119,7 @@ func runSSHClient(opt sshClientOptions, args []string) error {
 			if err != nil {
 				return err
 			}
-			b, err = tpmk.NVRead(dev, crtHandle, "")
+			b, err = tpmk.NVRead(dev, crtHandle, opt.crtPassword)
 			if err != nil {
 				return errors.Wrap(err, "reading crt from TPM")
 			}

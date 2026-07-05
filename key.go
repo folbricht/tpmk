@@ -14,6 +14,7 @@ import (
 )
 
 // GenRSAPrimaryKey generates a primary RSA key and makes it persistent under the given handle.
+// parentPW is the password of the owner hierarchy, ownerPW becomes the password of the new key.
 func GenRSAPrimaryKey(dev io.ReadWriteCloser, handle tpmutil.Handle, parentPW, ownerPW string, attr tpm2.KeyProp) (crypto.PublicKey, error) {
 	// Define the TPM key template
 	pub := tpm2.Public{
@@ -37,13 +38,14 @@ func GenRSAPrimaryKey(dev io.ReadWriteCloser, handle tpmutil.Handle, parentPW, o
 	}
 	defer tpm2.FlushContext(dev, signerHandle)
 
-	// Make the key persistent
-	return pubKey, tpm2.EvictControl(dev, ownerPW, tpm2.HandleOwner, signerHandle, handle)
+	// Make the key persistent. EvictControl is authorized by the owner
+	// hierarchy password, not the password of the new key.
+	return pubKey, tpm2.EvictControl(dev, parentPW, tpm2.HandleOwner, signerHandle, handle)
 }
 
 // LoadExternal loads an existing key-pair into the TPM and returns the key handle. The key is loaded
-// / into the Null hierarchy and not persistent.
-func LoadExternal(dev io.ReadWriteCloser, handle tpmutil.Handle, pk crypto.PrivateKey, password string, attr tpm2.KeyProp) (tpmutil.Handle, error) {
+// into the Null hierarchy and not persistent. The password becomes the auth value of the loaded key.
+func LoadExternal(dev io.ReadWriteCloser, pk crypto.PrivateKey, password string, attr tpm2.KeyProp) (tpmutil.Handle, error) {
 	var (
 		tpm2Pub  tpm2.Public
 		tpm2Priv tpm2.Private
@@ -66,6 +68,7 @@ func LoadExternal(dev io.ReadWriteCloser, handle tpmutil.Handle, pk crypto.Priva
 		}
 		tpm2Priv = tpm2.Private{
 			Type:      tpm2.AlgRSA,
+			AuthValue: []byte(password),
 			Sensitive: private.Primes[0].Bytes(),
 		}
 	case *ecdsa.PrivateKey:
@@ -87,6 +90,7 @@ func LoadExternal(dev io.ReadWriteCloser, handle tpmutil.Handle, pk crypto.Priva
 		}
 		tpm2Priv = tpm2.Private{
 			Type:      tpm2.AlgECC,
+			AuthValue: []byte(password),
 			Sensitive: private.D.Bytes(),
 		}
 	default:

@@ -104,6 +104,7 @@ func runSSHCert(opt sshCertOptions, args []string) error {
 		Key:         sshPublic,
 		CertType:    ssh.UserCert,
 		KeyId:       opt.id,
+		Serial:      opt.serial,
 		ValidAfter:  0, // 0 - MaxUint64 = "forever"
 		ValidBefore: math.MaxUint64,
 		Permissions: ssh.Permissions{
